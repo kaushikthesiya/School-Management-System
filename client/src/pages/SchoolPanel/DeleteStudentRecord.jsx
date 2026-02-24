@@ -22,6 +22,19 @@ const DeleteStudentRecord = () => {
         }
     };
 
+    const handleDelete = async (id) => {
+        if (!window.confirm('Are you SURE you want to permanently delete this student record? This action cannot be undone.')) return;
+
+        try {
+            await api.delete(`/api/students/${id}`);
+            setStudents(prev => prev.filter(s => s._id !== id));
+            alert('Student record deleted permanently');
+        } catch (error) {
+            console.error('Delete Error:', error);
+            alert('Failed to delete student record');
+        }
+    };
+
     useEffect(() => {
         fetchStudents();
     }, [searchTerm]);
@@ -103,7 +116,11 @@ const DeleteStudentRecord = () => {
                                         <td className="px-6 py-5 text-sm font-bold text-slate-500">{student.roll}</td>
                                         <td className="px-8 py-5 text-right">
                                             <div className="flex justify-end items-center space-x-3 transform group-hover:translate-x-0 translate-x-4 opacity-0 group-hover:opacity-100 transition-all">
-                                                <button className="p-2.5 text-rose-500 hover:bg-rose-50 rounded-xl transition-all shadow-sm border border-transparent hover:border-rose-100" title="Delete Permanent">
+                                                <button
+                                                    onClick={() => handleDelete(student._id)}
+                                                    className="p-2.5 text-rose-500 hover:bg-rose-50 rounded-xl transition-all shadow-sm border border-transparent hover:border-rose-100"
+                                                    title="Delete Permanent"
+                                                >
                                                     <Trash2 size={16} />
                                                 </button>
                                                 <button className="flex items-center space-x-3 px-6 py-2.5 bg-white border-2 border-primary text-primary rounded-full text-[10px] font-black tracking-widest hover:bg-primary hover:text-white transition-all group shadow-lg shadow-primary/5 active:scale-95">

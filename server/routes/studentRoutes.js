@@ -10,7 +10,10 @@ router.get('/', protect, async (req, res) => {
         const { classId, section, search, status } = req.query;
         let query = { school: req.school._id };
 
-        if (classId) query.class = classId;
+        if (classId) {
+            if (classId === 'unassigned') query.class = { $exists: false };
+            else query.class = classId;
+        }
         if (section) query.section = section;
         if (status !== undefined) query.isActive = status === 'true';
         if (search) {
@@ -21,7 +24,10 @@ router.get('/', protect, async (req, res) => {
             ];
         }
 
-        const students = await Student.find(query).populate('class').populate('academicYear');
+        const students = await Student.find(query)
+            .populate('class')
+            .populate('academicYear')
+            .populate('transportRoute');
         res.json(students);
     } catch (error) {
         console.error('Get Students Error:', error);
@@ -41,7 +47,7 @@ router.post('/bulk-fetch', protect, authorize('schooladmin'), async (req, res) =
         const students = await Student.find({
             _id: { $in: ids },
             school: req.school._id
-        }).populate('class').populate('academicYear');
+        }).populate('class').populate('academicYear').populate('transportRoute');
         res.json(students);
     } catch (error) {
         console.error('Bulk Fetch Students Error:', error);
@@ -226,6 +232,25 @@ router.put('/:id', protect, authorize('schooladmin', 'frontdesk'), async (req, r
     }
 });
 
+// @desc    Partial update student details
+// @route   PATCH /api/students/:id
+router.patch('/:id', protect, authorize('schooladmin', 'frontdesk'), async (req, res) => {
+    try {
+        const { Student } = req.tenantModels;
+        const student = await Student.findOneAndUpdate(
+            { _id: req.params.id, school: req.school._id },
+            { $set: req.body },
+            { new: true, runValidators: true }
+        );
+
+        if (!student) return res.status(404).json({ message: 'Student not found' });
+        res.json({ message: 'Student updated successfully', student });
+    } catch (error) {
+        console.error('Patch Student Error:', error);
+        res.status(400).json({ message: error.message });
+    }
+});
+
 // @desc    Delete student record
 // @route   DELETE /api/students/:id
 router.delete('/:id', protect, authorize('schooladmin'), async (req, res) => {
@@ -244,12 +269,15 @@ router.delete('/:id', protect, authorize('schooladmin'), async (req, res) => {
 // @desc    Promote students (Bulk)
 // @route   POST /api/students/promote
 router.post('/promote', protect, authorize('schooladmin'), async (req, res) => {
-    const { studentIds, targetClassId, targetSection } = req.body;
+    const { studentIds, targetClassId, targetSection, targetAcademicYear } = req.body;
     try {
         const { Student } = req.tenantModels;
+        const updateData = { class: targetClassId, section: targetSection };
+        if (targetAcademicYear) updateData.academicYear = targetAcademicYear;
+
         await Student.updateMany(
             { _id: { $in: studentIds } },
-            { class: targetClassId, section: targetSection }
+            updateData
         );
         res.json({ message: 'Students promoted successfully' });
     } catch (error) {
@@ -294,6 +322,79 @@ router.post('/:id/documents', protect, authorize('schooladmin', 'frontdesk'), as
         res.json(student);
     } catch (error) {
         console.error('Add Document Error:', error);
+        res.status(500).json({ message: 'Server Error' });
+    }
+});
+
+// @desc    Get multi-class assignments
+// @route   GET /api/students/multi-class
+router.get('/multi-class', protect, async (req, res) => {
+    try {
+        const { MultiClassStudent } = req.tenantModels;
+        const { classId, section } = req.query;
+        let query = { school: req.school._id };
+        if (classId) query.class = classId;
+        if (section) query.section = section;
+
+        const assignments = await MultiClassStudent.find(query)
+            .populate('student')
+            .populate('class')
+            .populate('academicYear');
+        res.json(assignments);
+    } catch (error) {
+        console.error('Get MultiClass Assignments Error:', error);
+        res.status(500).json({ message: 'Server Error' });
+    }
+});
+
+// @desc    Add multi-class assignment
+// @route   POST /api/students/multi-class
+router.post('/multi-class', protect, authorize('schooladmin'), async (req, res) => {
+    try {
+        const { MultiClassStudent } = req.tenantModels;
+        const { studentId, classId, section, academicYearId } = req.body;
+
+        // Check if already assigned to this class/section
+        const existing = await MultiClassStudent.findOne({
+            student: studentId,
+            class: classId,
+            section,
+            school: req.school._id
+        });
+
+        if (existing) {
+            return res.status(400).json({ message: 'Student is already assigned to this class and section' });
+        }
+
+        const assignment = await MultiClassStudent.create({
+            student: studentId,
+            class: classId,
+            section,
+            academicYear: academicYearId,
+            school: req.school._id
+        });
+
+        res.status(201).json(assignment);
+    } catch (error) {
+        console.error('Add MultiClass Assignment Error:', error);
+        res.status(500).json({ message: 'Server Error' });
+    }
+});
+
+// @desc    Delete multi-class assignment
+// @route   DELETE /api/students/multi-class/:id
+router.delete('/multi-class/:id', protect, authorize('schooladmin'), async (req, res) => {
+    try {
+        const { MultiClassStudent } = req.tenantModels;
+        const assignment = await MultiClassStudent.findOneAndDelete({
+            _id: req.params.id,
+            school: req.school._id
+        });
+
+        if (!assignment) return res.status(404).json({ message: 'Assignment not found' });
+        res.json({ message: 'Multi-class assignment removed' });
+    } catch (error) {
+        console.error('Delete MultiClass Assignment Error:', error);
         res.status(500).json({ message: 'Server Error' });
     }
 });

@@ -159,6 +159,45 @@ router.post('/classes', protect, authorize('schooladmin'), async (req, res) => {
     }
 });
 
+// @desc    Update a class
+// @route   PUT /api/academic/classes/:id
+router.put('/classes/:id', protect, authorize('schooladmin'), async (req, res) => {
+    try {
+        const { Class } = req.tenantModels;
+        const updatedClass = await Class.findOneAndUpdate(
+            { _id: req.params.id, school: req.school._id },
+            req.body,
+            { new: true }
+        );
+        if (!updatedClass) return res.status(404).json({ message: 'Class not found' });
+        res.json(updatedClass);
+    } catch (error) {
+        console.error('Update Class Error:', error);
+        res.status(500).json({ message: 'Server Error', details: error.message });
+    }
+});
+
+// @desc    Delete a class
+// @route   DELETE /api/academic/classes/:id
+router.delete('/classes/:id', protect, authorize('schooladmin'), async (req, res) => {
+    try {
+        const { Class, Student } = req.tenantModels;
+
+        // Check if class has students
+        const studentCount = await Student.countDocuments({ class: req.params.id, school: req.school._id });
+        if (studentCount > 0) {
+            return res.status(400).json({ message: 'Cannot delete class with existing students' });
+        }
+
+        const deletedClass = await Class.findOneAndDelete({ _id: req.params.id, school: req.school._id });
+        if (!deletedClass) return res.status(404).json({ message: 'Class not found' });
+        res.json({ message: 'Class deleted successfully' });
+    } catch (error) {
+        console.error('Delete Class Error:', error);
+        res.status(500).json({ message: 'Server Error', details: error.message });
+    }
+});
+
 // @desc    Get all subjects for a school
 // @route   GET /api/academic/subjects
 router.get('/subjects', protect, async (req, res) => {
@@ -486,6 +525,21 @@ router.delete('/student-groups/:id', protect, authorize('schooladmin', 'frontdes
     }
 });
 
+router.patch('/student-groups/:id/students', protect, authorize('schooladmin', 'frontdesk'), async (req, res) => {
+    try {
+        const { StudentGroup } = req.tenantModels;
+        const { studentIds } = req.body;
+        const group = await StudentGroup.findOneAndUpdate(
+            { _id: req.params.id, school: req.school._id },
+            { $set: { students: studentIds } },
+            { new: true }
+        );
+        res.json(group);
+    } catch (error) {
+        res.status(500).json({ message: 'Server Error' });
+    }
+});
+
 // --- STUDENT CATEGORY ROUTES ---
 router.get('/student-categories', protect, async (req, res) => {
     try {
@@ -512,6 +566,77 @@ router.delete('/student-categories/:id', protect, authorize('schooladmin', 'fron
         const { StudentCategory } = req.tenantModels;
         await StudentCategory.deleteOne({ _id: req.params.id, school: req.school._id });
         res.json({ message: 'Category deleted' });
+    } catch (error) {
+        res.status(500).json({ message: 'Server Error' });
+    }
+});
+
+// --- SETTINGS ROUTES ---
+router.patch('/settings/student-admission', protect, authorize('schooladmin'), async (req, res) => {
+    try {
+        const { AcademicStructure } = req.tenantModels;
+        const structure = await AcademicStructure.findOneAndUpdate(
+            { school: req.school._id },
+            { $set: { studentAdmissionSettings: req.body } },
+            { new: true, upsert: true }
+        );
+        res.json(structure);
+    } catch (error) {
+        res.status(500).json({ message: 'Server Error' });
+    }
+});
+
+router.get('/settings/student-admission', protect, async (req, res) => {
+    try {
+        const { AcademicStructure } = req.tenantModels;
+        const structure = await AcademicStructure.findOne({ school: req.school._id });
+        res.json(structure?.studentAdmissionSettings || {});
+    } catch (error) {
+        res.status(500).json({ message: 'Server Error' });
+    }
+});
+
+// --- SMS SETTINGS ROUTES ---
+router.get('/settings/sms', protect, async (req, res) => {
+    try {
+        const { SmsSettings } = req.tenantModels;
+        const settings = await SmsSettings.find({ school: req.school._id }).sort({ createdAt: -1 });
+        res.json(settings);
+    } catch (error) {
+        res.status(500).json({ message: 'Server Error' });
+    }
+});
+
+router.post('/settings/sms', protect, authorize('schooladmin'), async (req, res) => {
+    try {
+        const { SmsSettings } = req.tenantModels;
+        const { id, startTime, status } = req.body;
+
+        if (id) {
+            const updated = await SmsSettings.findOneAndUpdate(
+                { _id: id, school: req.school._id },
+                { $set: { startTime, status } },
+                { new: true }
+            );
+            return res.json(updated);
+        }
+
+        const newSetting = await SmsSettings.create({
+            school: req.school._id,
+            startTime,
+            status
+        });
+        res.json(newSetting);
+    } catch (error) {
+        res.status(500).json({ message: 'Server Error' });
+    }
+});
+
+router.delete('/settings/sms/:id', protect, authorize('schooladmin'), async (req, res) => {
+    try {
+        const { SmsSettings } = req.tenantModels;
+        await SmsSettings.findOneAndDelete({ _id: req.params.id, school: req.school._id });
+        res.json({ message: 'Deleted successfully' });
     } catch (error) {
         res.status(500).json({ message: 'Server Error' });
     }

@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import api from '../../api/api';
 import { Button, Card, Input } from '../../components/SnowUI';
-import { Search, GraduationCap, Trash2, MoreVertical, CheckCircle2 } from 'lucide-react';
+import { Search, GraduationCap, Trash2, MoreVertical, CheckCircle2, Edit, X } from 'lucide-react';
 
 const Classes = () => {
     const [classes, setClasses] = useState([]);
@@ -9,6 +9,9 @@ const Classes = () => {
     const [structure, setStructure] = useState({ mediums: [], shifts: [], streams: [] });
     const [formData, setFormData] = useState({ name: '', medium: '', stream: '', shift: '', selectedSections: [] });
     const [loading, setLoading] = useState(false);
+    const [editingClass, setEditingClass] = useState(null);
+    const [openDropdown, setOpenDropdown] = useState(null);
+    const dropdownRef = useRef(null);
 
     const fetchData = async () => {
         try {
@@ -27,6 +30,14 @@ const Classes = () => {
 
     useEffect(() => {
         fetchData();
+
+        const handleClickOutside = (event) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+                setOpenDropdown(null);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
     const handleSubmit = async (e) => {
@@ -37,19 +48,53 @@ const Classes = () => {
         }
         setLoading(true);
         try {
-            await api.post('/api/academic/classes', {
+            const payload = {
                 name: formData.name,
                 medium: formData.medium,
                 stream: formData.stream,
                 shift: formData.shift,
                 sections: formData.selectedSections
-            });
+            };
+
+            if (editingClass) {
+                await api.put(`/api/academic/classes/${editingClass._id}`, payload);
+            } else {
+                await api.post('/api/academic/classes', payload);
+            }
+
             setFormData({ name: '', medium: '', stream: '', shift: '', selectedSections: [] });
+            setEditingClass(null);
             fetchData();
         } catch (error) {
-            console.error('Error creating class:', error);
+            console.error('Error saving class:', error);
+            alert(error.response?.data?.message || 'Error saving class');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleEdit = (cls) => {
+        setEditingClass(cls);
+        setFormData({
+            name: cls.name,
+            medium: cls.medium || '',
+            stream: cls.stream || '',
+            shift: cls.shift || '',
+            selectedSections: cls.sections || []
+        });
+        setOpenDropdown(null);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    const handleDelete = async (classId) => {
+        if (!window.confirm('Are you sure you want to delete this class? This action cannot be undone.')) return;
+        try {
+            await api.delete(`/api/academic/classes/${classId}`);
+            fetchData();
+            setOpenDropdown(null);
+        } catch (error) {
+            console.error('Error deleting class:', error);
+            alert(error.response?.data?.message || 'Error deleting class');
         }
     };
 
@@ -81,13 +126,24 @@ const Classes = () => {
                 {/* Left Column: Add Class */}
                 <div className="lg:col-span-1">
                     <Card className="p-0 border-none shadow-3xl shadow-slate-100 bg-white overflow-hidden rounded-3xl">
-                        <div className="bg-slate-50/50 p-6 border-b border-slate-50">
+                        <div className="bg-slate-50/50 p-6 border-b border-slate-50 flex justify-between items-center">
                             <h2 className="text-[10px] font-black text-[#1C1C1C] uppercase tracking-[0.2em] flex items-center space-x-3">
                                 <span className="w-8 h-[1px] bg-[#1C1C1C]/20"></span>
-                                <span>Add Class</span>
+                                <span>{editingClass ? 'Edit Class' : 'Add Class'}</span>
                             </h2>
+                            {editingClass && (
+                                <button
+                                    onClick={() => {
+                                        setEditingClass(null);
+                                        setFormData({ name: '', medium: '', stream: '', shift: '', selectedSections: [] });
+                                    }}
+                                    className="p-1 text-slate-400 hover:text-red-500 transition-colors"
+                                >
+                                    <X size={14} strokeWidth={3} />
+                                </button>
+                            )}
                         </div>
-                        <form onSubmit={handleSubmit} className="space-y-6">
+                        <form onSubmit={handleSubmit} className="p-8 space-y-6">
                             <div className="space-y-2">
                                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Name *</label>
                                 <input
@@ -124,10 +180,10 @@ const Classes = () => {
                                 <Button
                                     type="submit"
                                     disabled={loading}
-                                    className="!bg-[#7c32ff] !rounded-lg flex items-center space-x-2 px-8 py-3 shadow-lg shadow-purple-500/20 active:scale-95 transition-all text-white font-black italic uppercase tracking-widest text-[11px]"
+                                    className="!bg-[#7c32ff] !rounded-lg flex items-center space-x-2 px-8 py-3 shadow-lg shadow-purple-500/20 active:scale-95 transition-all text-white font-black italic uppercase tracking-widest text-[11px] w-full"
                                 >
                                     <CheckCircle2 size={16} />
-                                    <span>{loading ? 'Saving...' : 'Save Class'}</span>
+                                    <span>{loading ? 'Saving...' : editingClass ? 'Update Class' : 'Save Class'}</span>
                                 </Button>
                             </div>
                         </form>
@@ -161,36 +217,71 @@ const Classes = () => {
                                 </thead>
                                 <tbody className="divide-y divide-slate-50 text-[13px] font-bold">
                                     {classes.map((cls) => (
-                                        (cls.sectionCounts || []).map((secData, idx) => (
-                                            <tr key={`${cls._id}-${secData.section}`} className="hover:bg-slate-50/50 transition-colors group">
-                                                <td className="px-6 py-4">
-                                                    <div className="flex items-center space-x-3 text-slate-700 italic underline decoration-primary/5 decoration-4">
-                                                        <span className="uppercase">{cls.name}</span>
-                                                        {(cls.medium || cls.stream) && (
-                                                            <span className="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-md font-bold no-underline">
-                                                                {cls.medium} {cls.stream ? `• ${cls.stream}` : ''} {cls.shift ? `• ${cls.shift}` : ''}
+                                        <tr key={cls._id} className="hover:bg-slate-50/50 transition-colors group align-top">
+                                            <td className="px-6 py-6 whitespace-nowrap">
+                                                <div className="flex items-center space-x-3 text-slate-700 italic underline decoration-primary/5 decoration-4">
+                                                    <span className="uppercase">{cls.name}</span>
+                                                    {(cls.medium || cls.stream) && (
+                                                        <span className="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-md font-bold no-underline">
+                                                            {cls.medium} {cls.stream ? `• ${cls.stream}` : ''} {cls.shift ? `• ${cls.shift}` : ''}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-6">
+                                                <div className="flex flex-col space-y-4">
+                                                    {(cls.sectionCounts || []).map((sec, idx) => (
+                                                        <div key={idx} className="h-6 flex items-center">
+                                                            <span className="bg-[#F8FAFC] text-[#7c32ff] px-3 py-1 rounded-md text-[10px] font-black tracking-widest border border-slate-100 uppercase inline-block">
+                                                                {sec.section}
                                                             </span>
-                                                        )}
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <span className="bg-[#F8FAFC] text-[#7c32ff] px-3 py-1 rounded-md text-[10px] font-black tracking-widest border border-slate-100 uppercase">
-                                                        {secData.section}
-                                                    </span>
-                                                </td>
-                                                <td className="px-6 py-4 text-center text-slate-500 font-black">
-                                                    {secData.count}
-                                                </td>
-                                                <td className="px-6 py-4 text-right">
-                                                    <div className="flex justify-end items-center">
-                                                        <button className="border border-slate-200 rounded-full px-4 py-1.5 flex items-center space-x-2 text-[10px] font-black text-slate-500 uppercase tracking-widest hover:border-[#7c32ff] hover:text-[#7c32ff] transition-all">
-                                                            <span>Select</span>
-                                                            <MoreVertical size={12} />
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ))
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-6 text-center">
+                                                <div className="flex flex-col space-y-4">
+                                                    {(cls.sectionCounts || []).map((sec, idx) => (
+                                                        <div key={idx} className="h-6 flex items-center justify-center font-black text-slate-500">
+                                                            {sec.count}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-6 text-right relative">
+                                                <div className="flex justify-end items-start h-full">
+                                                    <button
+                                                        onClick={() => setOpenDropdown(openDropdown === cls._id ? null : cls._id)}
+                                                        className={`border rounded-full px-4 py-1.5 flex items-center space-x-2 text-[10px] font-black uppercase tracking-widest transition-all ${openDropdown === cls._id ? 'border-[#7c32ff] text-[#7c32ff] bg-[#7c32ff]/5' : 'border-slate-200 text-slate-500 hover:border-[#7c32ff] hover:text-[#7c32ff]'}`}
+                                                    >
+                                                        <span>Select</span>
+                                                        <MoreVertical size={12} />
+                                                    </button>
+
+                                                    {openDropdown === cls._id && (
+                                                        <div
+                                                            ref={dropdownRef}
+                                                            className="absolute right-6 top-14 w-32 bg-white rounded-xl shadow-2xl border border-slate-100 p-2 z-50 animate-in fade-in slide-in-from-top-2 duration-200"
+                                                        >
+                                                            <button
+                                                                onClick={() => handleEdit(cls)}
+                                                                className="w-full text-left px-4 py-2 text-[10px] font-black text-slate-600 uppercase tracking-widest hover:bg-[#7c32ff]/5 hover:text-[#7c32ff] rounded-lg transition-all flex items-center space-x-2"
+                                                            >
+                                                                <Edit size={12} />
+                                                                <span>Edit</span>
+                                                            </button>
+                                                            <button
+                                                                onClick={() => handleDelete(cls._id)}
+                                                                className="w-full text-left px-4 py-2 text-[10px] font-black text-slate-400 uppercase tracking-widest hover:bg-red-50 hover:text-red-500 rounded-lg transition-all flex items-center space-x-2"
+                                                            >
+                                                                <Trash2 size={12} />
+                                                                <span>Delete</span>
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </td>
+                                        </tr>
                                     ))}
                                     {classes.length === 0 && (
                                         <tr>

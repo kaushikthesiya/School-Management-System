@@ -28,11 +28,20 @@ router.get('/visitors', protect, authorize('schooladmin', 'frontdesk'), async (r
 
 router.post('/visitors', protect, authorize('schooladmin', 'frontdesk'), upload.single('file'), async (req, res) => {
     try {
+        const { Visitor } = req.tenantModels;
         const visitorData = { ...req.body, school: req.user.school };
+
+        // Auto-generate visitorId if not provided
+        if (!visitorData.visitorId || visitorData.visitorId.trim() === '' || visitorData.visitorId === 'undefined') {
+            const count = await Visitor.countDocuments({ school: req.user.school });
+            const year = new Date().getFullYear();
+            visitorData.visitorId = `V-${year}-${(count + 1).toString().padStart(3, '0')}`;
+        }
+
         if (req.file) {
             visitorData.file = req.file.path;
         }
-        const visitor = await req.tenantModels.Visitor.create(visitorData);
+        const visitor = await Visitor.create(visitorData);
         res.status(201).json(visitor);
     } catch (error) {
         console.error('Visitor Error:', error);

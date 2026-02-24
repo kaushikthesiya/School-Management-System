@@ -6,10 +6,20 @@ const bookSchema = new mongoose.Schema({
     author: { type: String },
     isbn: { type: String },
     category: { type: String },
-    price: { type: Number },
+    subject: { type: String },
+    price: { type: Number, default: 0 },
     quantity: { type: Number, default: 1 },
+    availableQty: { type: Number, default: 1 },
     rackNumber: { type: String },
-    description: { type: String }
+    description: { type: String },
+    // Issue / Return tracking
+    issuedTo: {
+        memberId: { type: String },
+        memberName: { type: String },
+        memberType: { type: String, enum: ['Student', 'Staff'] }
+    },
+    issuedDate: { type: Date },
+    dueDate: { type: Date }
 }, { timestamps: true });
 
 module.exports = (connection) => {

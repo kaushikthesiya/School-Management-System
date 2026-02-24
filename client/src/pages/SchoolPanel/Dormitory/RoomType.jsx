@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     Search, Download, Printer, FileText, LayoutGrid, ChevronDown, Edit, Trash2
 } from 'lucide-react';
 import { Card, Button } from '../../../components/SnowUI';
+import api from '../../../api/api';
 
 const Input = ({ label, name, value, onChange, placeholder, required, type = "text" }) => (
     <div className="space-y-2 group">
@@ -26,23 +27,54 @@ const RoomType = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [openActionId, setOpenActionId] = useState(null);
     const [formData, setFormData] = useState({
-        roomType: '',
+        name: '',
         description: ''
     });
 
-    const [types] = useState([
-        { type: 'Single', description: 'DarkRed' },
-        { type: 'Double', description: 'DarkSlateGray' },
-        { type: 'Triple', description: 'LightCoral' },
-        { type: 'Quad', description: 'LightSlateGray' },
-        { type: 'Queen', description: 'DarkOliveGreen' },
-        { type: 'King', description: 'HoneyDew' },
-    ]);
+    const [types, setTypes] = useState([]);
+
+    useEffect(() => {
+        fetchRoomTypes();
+    }, []);
+
+    const fetchRoomTypes = async () => {
+        try {
+            const res = await api.get('/api/dormitory/room-types');
+            setTypes(res.data);
+        } catch (error) {
+            console.error('Failed to fetch room types');
+        }
+    };
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
     };
+
+    const handleSubmit = async () => {
+        if (!formData.name) return alert('Room type name is required');
+        try {
+            await api.post('/api/dormitory/room-types', formData);
+            setFormData({ name: '', description: '' });
+            fetchRoomTypes();
+        } catch (error) {
+            alert('Failed to save room type');
+        }
+    };
+
+    const handleDelete = async (id) => {
+        if (!window.confirm('Delete this room type?')) return;
+        try {
+            await api.delete(`/api/dormitory/room-types/${id}`);
+            fetchRoomTypes();
+        } catch (error) {
+            alert('Failed to delete room type');
+        }
+    };
+
+    const filteredTypes = types.filter(type =>
+        type.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500 pb-20">
@@ -69,8 +101,8 @@ const RoomType = () => {
                     <div className="space-y-6">
                         <Input
                             label="ROOM TYPE *"
-                            name="roomType"
-                            value={formData.roomType}
+                            name="name"
+                            value={formData.name}
                             onChange={handleInputChange}
                             placeholder="Room Type *"
                             required
@@ -88,7 +120,10 @@ const RoomType = () => {
                             />
                         </div>
                         <div className="flex justify-center pt-6">
-                            <Button className="bg-[#7c32ff] hover:bg-[#6b25ea] text-white rounded-2xl px-12 py-4 text-[10px] font-black uppercase tracking-widest flex items-center space-x-2 shadow-2xl shadow-purple-500/30 active:scale-95 transition-all w-full">
+                            <Button
+                                onClick={handleSubmit}
+                                className="bg-[#7c32ff] hover:bg-[#6b25ea] text-white rounded-2xl px-12 py-4 text-[10px] font-black uppercase tracking-widest flex items-center space-x-2 shadow-2xl shadow-purple-500/30 active:scale-95 transition-all w-full"
+                            >
                                 <span>✓ SAVE ROOM TYPE</span>
                             </Button>
                         </div>
@@ -141,10 +176,10 @@ const RoomType = () => {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-50">
-                                {types.map((type, idx) => (
+                                {filteredTypes.map((type, idx) => (
                                     <tr key={idx} className="group hover:bg-slate-50/50 transition-colors">
                                         <td className="py-6 px-6 font-bold text-slate-600 text-xs">{idx + 1}</td>
-                                        <td className="py-6 px-6 text-slate-400 text-xs">{type.type}</td>
+                                        <td className="py-6 px-6 text-slate-400 text-xs">{type.name}</td>
                                         <td className="py-6 px-6 text-slate-400 text-xs">{type.description}</td>
                                         <td className="py-6 px-6 text-right relative">
                                             <div className="relative inline-block">
@@ -166,7 +201,10 @@ const RoomType = () => {
                                                                 <Edit size={14} className="text-slate-300" />
                                                                 <span>Edit</span>
                                                             </button>
-                                                            <button className="w-full px-5 py-3 text-left text-[10px] font-black text-red-500 hover:bg-red-50 transition-colors uppercase tracking-widest flex items-center space-x-3">
+                                                            <button
+                                                                onClick={() => handleDelete(type._id)}
+                                                                className="w-full px-5 py-3 text-left text-[10px] font-black text-red-500 hover:bg-red-50 transition-colors uppercase tracking-widest flex items-center space-x-3"
+                                                            >
                                                                 <Trash2 size={14} className="text-red-300" />
                                                                 <span>Delete</span>
                                                             </button>

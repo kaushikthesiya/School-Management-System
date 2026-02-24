@@ -120,10 +120,10 @@ const Visitors = () => {
                             />
 
                             <Input
-                                label="Visitor ID"
+                                label="Visitor ID / Pass No"
                                 value={formData.visitorId}
                                 onChange={e => setFormData({ ...formData, visitorId: e.target.value })}
-                                placeholder="ID Card No"
+                                placeholder="Auto-generated if empty"
                             />
 
                             <div className="grid grid-cols-2 gap-4">
@@ -230,7 +230,10 @@ const Visitors = () => {
                                                 <tr key={visitor._id} className="hover:bg-slate-50/30 transition-colors group">
                                                     <td className="px-8 py-5">
                                                         <div className="flex flex-col">
-                                                            <span className="text-sm font-black text-slate-700 italic uppercase underline decoration-primary/10 decoration-4 underline-offset-4">{visitor.name}</span>
+                                                            <div className="flex items-center space-x-2">
+                                                                <span className="text-sm font-black text-slate-700 italic uppercase underline decoration-primary/10 decoration-4 underline-offset-4">{visitor.name}</span>
+                                                                <span className="bg-primary/10 text-primary text-[8px] font-black px-1.5 py-0.5 rounded-md tracking-tighter uppercase">{visitor.visitorId}</span>
+                                                            </div>
                                                             <span className="text-[10px] text-slate-400 font-black tracking-widest mt-1">{visitor.phone}</span>
                                                         </div>
                                                     </td>

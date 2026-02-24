@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button, Card } from '../../components/SnowUI';
 import {
     Save,
@@ -11,18 +11,69 @@ import {
     ChevronLeft,
     ChevronRight,
     Terminal,
-    ArrowLeft
+    ArrowLeft,
+    Trash2
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import api from '../../api/api';
+import { useToast } from '../../context/ToastContext';
 
 const SmsSendingTime = () => {
     const navigate = useNavigate();
+    const { showToast } = useToast();
     const [searchTerm, setSearchTerm] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [settingsList, setSettingsList] = useState([]);
 
     const [formData, setFormData] = useState({
-        startTime: '5:08 PM',
-        status: ''
+        startTime: '09:00 AM',
+        status: 'Active'
     });
+
+    const fetchSettings = async () => {
+        try {
+            const res = await api.get('/api/academic/settings/sms');
+            setSettingsList(res.data);
+        } catch (error) {
+            console.error('Failed to fetch SMS settings');
+        }
+    };
+
+    useEffect(() => {
+        fetchSettings();
+    }, []);
+
+    const handleChange = (e) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleSave = async (e) => {
+        e.preventDefault();
+        setLoading(true);
+        try {
+            await api.post('/api/academic/settings/sms', formData);
+            showToast('Time setup saved successfully');
+            setFormData({ startTime: '09:00 AM', status: 'Active' });
+            fetchSettings();
+        } catch (error) {
+            console.error('Save Error:', error);
+            showToast('Failed to save time setup', 'error');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleDelete = async (id) => {
+        if (!window.confirm('Delete this time setup?')) return;
+        try {
+            await api.delete(`/api/academic/settings/sms/${id}`);
+            showToast('Deleted successfully');
+            fetchSettings();
+        } catch (error) {
+            showToast('Failed to delete', 'error');
+        }
+    };
 
     const Label = ({ children, required }) => (
         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block ml-1">
@@ -67,15 +118,18 @@ const SmsSendingTime = () => {
 
                         <h3 className="text-sm font-black text-slate-700 uppercase tracking-widest mb-8">Add Time Setup</h3>
 
-                        <form className="space-y-8">
+                        <form onSubmit={handleSave} className="space-y-8">
                             <div className="space-y-4">
                                 <Label required>START TIME</Label>
                                 <div className="relative">
                                     <input
                                         type="text"
+                                        name="startTime"
+                                        placeholder="e.g., 09:00 AM"
                                         value={formData.startTime}
-                                        onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
+                                        onChange={handleChange}
                                         className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-4 text-xs font-bold text-slate-600 outline-none focus:ring-2 focus:ring-[#7c32ff]/10 focus:border-[#7c32ff] transition-all"
+                                        required
                                     />
                                     <Clock className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300" size={16} />
                                 </div>
@@ -83,16 +137,25 @@ const SmsSendingTime = () => {
 
                             <div className="space-y-4">
                                 <Label required>Status</Label>
-                                <select className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-4 text-xs font-bold text-slate-600 outline-none focus:ring-2 focus:ring-[#7c32ff]/10 focus:border-[#7c32ff] transition-all appearance-none">
-                                    <option value="">Select Status</option>
-                                    <option value="active">Active</option>
-                                    <option value="inactive">Inactive</option>
+                                <select
+                                    name="status"
+                                    value={formData.status}
+                                    onChange={handleChange}
+                                    className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-4 text-xs font-bold text-slate-600 outline-none focus:ring-2 focus:ring-[#7c32ff]/10 focus:border-[#7c32ff] transition-all appearance-none"
+                                    required
+                                >
+                                    <option value="Active">Active</option>
+                                    <option value="Inactive">Inactive</option>
                                 </select>
                             </div>
 
-                            <Button className="w-full bg-[#7c32ff] hover:bg-[#6b25ea] text-white rounded-2xl py-5 shadow-2xl shadow-purple-500/20 flex items-center justify-center space-x-3 hover:scale-[1.02] active:scale-95 transition-all group">
+                            <Button
+                                type="submit"
+                                disabled={loading}
+                                className="w-full bg-[#7c32ff] hover:bg-[#6b25ea] text-white rounded-2xl py-5 shadow-2xl shadow-purple-500/20 flex items-center justify-center space-x-3 hover:scale-[1.02] active:scale-95 transition-all group"
+                            >
                                 <Save size={18} strokeWidth={3} />
-                                <span className="uppercase text-[11px] font-black tracking-[0.2em] italic">SAVE TIME SETUP</span>
+                                <span className="uppercase text-[11px] font-black tracking-[0.2em] italic">{loading ? 'SAVING...' : 'SAVE TIME SETUP'}</span>
                             </Button>
                         </form>
                     </Card>
@@ -115,14 +178,6 @@ const SmsSendingTime = () => {
                                         onChange={(e) => setSearchTerm(e.target.value)}
                                     />
                                 </div>
-
-                                <div className="flex items-center space-x-1 border border-purple-100 rounded-xl p-1 bg-purple-50/30">
-                                    {[Copy, Download, FileText, Printer, Search].map((Icon, idx) => (
-                                        <button key={idx} className="p-2 rounded-lg text-slate-400 hover:text-[#7c32ff] hover:bg-white transition-all">
-                                            <Icon size={14} />
-                                        </button>
-                                    ))}
-                                </div>
                             </div>
                         </div>
 
@@ -130,39 +185,46 @@ const SmsSendingTime = () => {
                             <table className="w-full">
                                 <thead>
                                     <tr className="border-b border-slate-50">
-                                        <th className="text-left py-4 px-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                            <div className="flex items-center space-x-1">
-                                                <span>↓ Time</span>
-                                            </div>
-                                        </th>
-                                        <th className="text-left py-4 px-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                            <div className="flex items-center space-x-1">
-                                                <span>↓ Status</span>
-                                            </div>
-                                        </th>
-                                        <th className="text-left py-4 px-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                            <div className="flex items-center space-x-1 text-right justify-end">
-                                                <span>↓ Action</span>
-                                            </div>
-                                        </th>
+                                        <th className="text-left py-4 px-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Time</th>
+                                        <th className="text-left py-4 px-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
+                                        <th className="text-right py-4 px-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Action</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <tr className="group hover:bg-slate-50/50 transition-all border-b border-slate-50 last:border-0">
-                                        <td colSpan="3" className="py-12 text-center text-[10px] font-bold text-slate-300 uppercase tracking-widest italic">
-                                            No Data Available In Table
-                                        </td>
-                                    </tr>
+                                    {settingsList.length === 0 ? (
+                                        <tr className="group hover:bg-slate-50/50 transition-all border-b border-slate-50 last:border-0">
+                                            <td colSpan="3" className="py-12 text-center text-[10px] font-bold text-slate-300 uppercase tracking-widest italic">
+                                                No Data Available In Table
+                                            </td>
+                                        </tr>
+                                    ) : (
+                                        settingsList.map((item) => (
+                                            <tr key={item._id} className="group hover:bg-slate-50/50 transition-all border-b border-slate-50 last:border-0 hover:translate-x-1 transition-all">
+                                                <td className="py-4 px-4 text-xs font-black text-slate-700 italic uppercase underline decoration-purple-100 underline-offset-4 tracking-tighter">{item.startTime}</td>
+                                                <td className="py-4 px-4">
+                                                    <span className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest ${item.status === 'Active' ? 'bg-emerald-50 text-emerald-500' : 'bg-rose-50 text-rose-500'}`}>
+                                                        {item.status}
+                                                    </span>
+                                                </td>
+                                                <td className="py-4 px-4 text-right">
+                                                    <div className="flex justify-end space-x-2">
+                                                        <button
+                                                            onClick={() => handleDelete(item._id)}
+                                                            className="p-2 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all"
+                                                        >
+                                                            <Trash2 size={14} />
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    )}
                                 </tbody>
                             </table>
                         </div>
 
                         <div className="mt-auto pt-8 flex justify-between items-center text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                            <span>Showing 0 to 0 of 0 entries</span>
-                            <div className="flex space-x-4">
-                                <button className="hover:text-[#7c32ff] transition-colors"><ChevronLeft size={16} /></button>
-                                <button className="hover:text-[#7c32ff] transition-colors"><ChevronRight size={16} /></button>
-                            </div>
+                            <span>Showing {settingsList.length} entries</span>
                         </div>
 
                         {/* Floating Action Button Placeholder */}
@@ -177,3 +239,4 @@ const SmsSendingTime = () => {
 };
 
 export default SmsSendingTime;
+

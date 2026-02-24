@@ -2,8 +2,8 @@ const mongoose = require('mongoose');
 
 const studentSchema = new mongoose.Schema({
     // Academic Information
-    academicYear: { type: mongoose.Schema.Types.ObjectId, ref: 'Session', required: true },
-    class: { type: mongoose.Schema.Types.ObjectId, ref: 'Class', required: true },
+    academicYear: { type: mongoose.Schema.Types.ObjectId, ref: 'Session' },
+    class: { type: mongoose.Schema.Types.ObjectId, ref: 'Class' },
     section: { type: String, required: true },
     admissionNumber: { type: String, required: true, unique: true },
     admissionDate: { type: Date, default: Date.now },
@@ -77,10 +77,13 @@ const studentSchema = new mongoose.Schema({
     previousSchoolDetails: { type: String },
 
     // Other Info
-    route: { type: String },
-    vehicle: { type: String },
-    dormitory: { type: String },
-    room: { type: String },
+    transportRoute: { type: mongoose.Schema.Types.ObjectId, ref: 'TransportRoute' },
+    transportStop: { type: String },
+    dormitoryRoom: { type: mongoose.Schema.Types.ObjectId, ref: 'DormitoryRoom' },
+    route: { type: String }, // Legacy field, keeping for compatibility
+    vehicle: { type: String }, // Legacy field
+    dormitory: { type: String }, // Legacy field
+    room: { type: String }, // Legacy field
 
     // Custom Fields
     panNo: { type: String },

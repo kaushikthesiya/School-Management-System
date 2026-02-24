@@ -13,9 +13,16 @@ const enquirySchema = new mongoose.Schema({
     noOfChild: { type: Number },
     status: { type: String, enum: ['Open', 'Following Up', 'Admitted', 'Closed'], default: 'Open' },
     assignedTo: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-    assignedName: { type: String }, // For simple string assignment if user ref is not available
+    assignedName: { type: String },
     lastFollowUpDate: { type: Date },
-    nextFollowUp: { type: Date }
+    nextFollowUp: { type: Date },
+    notes: { type: String },
+    followUpHistory: [{
+        date: { type: Date, default: Date.now },
+        note: { type: String },
+        status: { type: String },
+        nextFollowUp: { type: Date }
+    }]
 }, { timestamps: true });
 
 module.exports = (connection) => {

@@ -33,6 +33,8 @@ const Designation = () => {
     const [editingId, setEditingId] = useState(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [openDropdown, setOpenDropdown] = useState(null);
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 8;
 
     const fetchDesignations = async () => {
         setLoading(true);
@@ -112,6 +114,15 @@ const Designation = () => {
     const filteredList = designations.filter(item =>
         item.name.toLowerCase().includes(searchQuery.toLowerCase())
     );
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchQuery]);
+
+    const indexOfLastItem = currentPage * itemsPerPage;
+    const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+    const paginatedList = filteredList.slice(indexOfFirstItem, indexOfLastItem);
+    const totalPages = Math.ceil(filteredList.length / itemsPerPage);
 
     const Label = ({ children, required }) => (
         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">
@@ -223,7 +234,7 @@ const Designation = () => {
                                             <td colSpan="2" className="py-20 text-center text-xs font-bold text-slate-400 uppercase tracking-widest">No Designations Found</td>
                                         </tr>
                                     ) : (
-                                        filteredList.map((item) => (
+                                        paginatedList.map((item) => (
                                             <tr key={item._id} className="hover:bg-snow-50/50 transition-colors group">
                                                 <td className="py-5 px-6 text-xs font-bold text-navy-700 italic group-hover:text-primary transition-colors">{item.name}</td>
                                                 <td className="py-5 px-6 text-right relative action-dropdown flex justify-end">
@@ -262,6 +273,42 @@ const Designation = () => {
                                 </tbody>
                             </table>
                         </div>
+
+                        {/* Pagination */}
+                        {filteredList.length > 0 && (
+                            <div className="flex flex-col md:flex-row items-center justify-between mt-8 px-2 gap-4">
+                                <div className="text-[11px] font-black text-slate-400 uppercase tracking-widest italic">
+                                    Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, filteredList.length)} of {filteredList.length} entries
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <button
+                                        onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                                        disabled={currentPage === 1}
+                                        className={`p-2 rounded-lg transition-all ${currentPage === 1 ? 'text-slate-200 cursor-not-allowed' : 'text-slate-400 hover:text-[#7c32ff] hover:bg-slate-50'}`}
+                                    >
+                                        <ChevronLeft size={16} />
+                                    </button>
+
+                                    {[...Array(totalPages)].map((_, idx) => (
+                                        <button
+                                            key={idx + 1}
+                                            onClick={() => setCurrentPage(idx + 1)}
+                                            className={`w-8 h-8 rounded-lg text-[11px] font-black transition-all ${currentPage === idx + 1 ? 'bg-[#7c32ff] text-white shadow-lg shadow-purple-500/20' : 'text-slate-400 hover:text-[#7c32ff] hover:bg-slate-50'}`}
+                                        >
+                                            {idx + 1}
+                                        </button>
+                                    ))}
+
+                                    <button
+                                        onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                                        disabled={currentPage === totalPages}
+                                        className={`p-2 rounded-lg transition-all ${currentPage === totalPages ? 'text-slate-200 cursor-not-allowed' : 'text-slate-400 hover:text-[#7c32ff] hover:bg-slate-50'}`}
+                                    >
+                                        <ChevronRight size={16} />
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                     </Card>
                 </div>
             </div>

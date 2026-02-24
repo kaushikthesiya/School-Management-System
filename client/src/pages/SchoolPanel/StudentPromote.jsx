@@ -13,6 +13,7 @@ import { useToast } from '../../context/ToastContext';
 const StudentPromote = () => {
     const { showToast } = useToast();
     const [classes, setClasses] = useState([]);
+    const [sessions, setSessions] = useState([]);
     const [loading, setLoading] = useState(false);
     const [students, setStudents] = useState([]);
     const [filters, setFilters] = useState({
@@ -31,15 +32,20 @@ const StudentPromote = () => {
     const [selectedStudentIds, setSelectedStudentIds] = useState([]);
 
     useEffect(() => {
-        const fetchClasses = async () => {
+        const fetchData = async () => {
             try {
-                const res = await api.get('/api/academic/classes');
-                setClasses(res.data);
+                const [classesRes, sessionsRes] = await Promise.all([
+                    api.get('/api/academic/classes'),
+                    api.get('/api/academic/sessions')
+                ]);
+                setClasses(classesRes.data);
+                setSessions(sessionsRes.data);
             } catch (error) {
-                console.error("Failed to fetch classes");
+                console.error("Failed to fetch data");
+                showToast('Failed to load classes and sessions', 'error');
             }
         };
-        fetchClasses();
+        fetchData();
     }, []);
 
     const handleChange = (e) => {
@@ -89,8 +95,8 @@ const StudentPromote = () => {
             showToast('Please select students to promote', 'error');
             return;
         }
-        if (!targetDetails.class || !targetDetails.section) {
-            showToast('Please select Target Class and Section', 'error');
+        if (!targetDetails.class || !targetDetails.section || !filters.promoteAcademicYear) {
+            showToast('Please select Target Class, Section, and Promotion Session', 'error');
             return;
         }
 
@@ -101,7 +107,8 @@ const StudentPromote = () => {
             await api.post('/api/students/promote', {
                 studentIds: selectedStudentIds,
                 targetClassId: targetDetails.class,
-                targetSection: targetDetails.section
+                targetSection: targetDetails.section,
+                targetAcademicYear: filters.promoteAcademicYear
             });
             showToast('Students promoted successfully!');
             setStudents([]); // Clear list
@@ -165,11 +172,11 @@ const StudentPromote = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
                     <div className="space-y-1.5">
                         <Label required>CURRENT SESSION</Label>
-                        <Select name="academicYear" value={filters.academicYear} onChange={handleChange} options={['2024-25', '2025-26']} placeholder="Select Year *" required />
+                        <Select name="academicYear" value={filters.academicYear} onChange={handleChange} options={sessions.map(s => ({ value: s._id, label: s.year }))} placeholder="Select Year *" required />
                     </div>
                     <div className="space-y-1.5">
                         <Label required>PROMOTE TO SESSION</Label>
-                        <Select name="promoteAcademicYear" value={filters.promoteAcademicYear} onChange={handleChange} options={['2025-26', '2026-27']} placeholder="Promote Year *" required />
+                        <Select name="promoteAcademicYear" value={filters.promoteAcademicYear} onChange={handleChange} options={sessions.map(s => ({ value: s._id, label: s.year }))} placeholder="Promote Year *" required />
                     </div>
                     <div className="space-y-1.5">
                         <Label required>CLASS</Label>

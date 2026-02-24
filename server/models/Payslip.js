@@ -9,6 +9,7 @@ const payslipSchema = new mongoose.Schema({
     allowances: { type: Number, default: 0 },
     deductions: { type: Number, default: 0 },
     netSalary: { type: Number, required: true },
+    note: { type: String, default: '' },
     status: { type: String, enum: ['Generated', 'Paid'], default: 'Generated' },
     paymentDate: { type: Date }
 }, { timestamps: true });

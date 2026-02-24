@@ -15,7 +15,7 @@ const FrontOffice = () => {
     const fetchData = async () => {
         try {
             const [enqRes, classRes] = await Promise.all([
-                api.get('/api/enquiries'),
+                api.get('/api/online-admission/enquiries'),
                 api.get('/api/academic/classes')
             ]);
             setEnquiries(enqRes.data);
@@ -30,7 +30,7 @@ const FrontOffice = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            await api.post('/api/enquiries', newEnquiry);
+            await api.post('/api/online-admission/enquiries', newEnquiry);
             setShowAddModal(false);
             setNewEnquiry({ name: '', phone: '', email: '', class: '', source: 'Walk-in', notes: '' });
             fetchData();
@@ -41,7 +41,7 @@ const FrontOffice = () => {
 
     const updateStatus = async (id, status) => {
         try {
-            await api.patch(`/api/enquiries/${id}`, { status });
+            await api.patch(`/api/online-admission/enquiries/${id}`, { status });
             fetchData();
         } catch (error) {
             alert('Error updating status');
@@ -91,8 +91,8 @@ const FrontOffice = () => {
                                 </div>
                             </div>
                             <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${enq.status === 'Open' ? 'bg-blue-50 text-blue-500' :
-                                    enq.status === 'Following Up' ? 'bg-amber-50 text-amber-500' :
-                                        enq.status === 'Admitted' ? 'bg-emerald-50 text-emerald-500' : 'bg-slate-100 text-slate-400'
+                                enq.status === 'Following Up' ? 'bg-amber-50 text-amber-500' :
+                                    enq.status === 'Admitted' ? 'bg-emerald-50 text-emerald-500' : 'bg-slate-100 text-slate-400'
                                 }`}>
                                 {enq.status}
                             </span>

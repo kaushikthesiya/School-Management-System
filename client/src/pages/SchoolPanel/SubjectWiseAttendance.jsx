@@ -2,26 +2,37 @@ import React, { useState, useEffect } from 'react';
 import { Card, Button, Input } from '../../components/SnowUI';
 import {
     Search,
-    Calendar,
     ChevronDown,
     Filter,
-    Plus
+    Plus,
+    Save,
+    CheckCircle2,
+    XCircle,
+    Clock,
+    UserCircle2
 } from 'lucide-react';
 import api from '../../api/api';
+import { useToast } from '../../context/ToastContext';
 
 const SubjectWiseAttendance = () => {
+    const { showToast } = useToast();
     const [classes, setClasses] = useState([]);
+    const [subjects, setSubjects] = useState([]);
+    const [students, setStudents] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [saving, setSaving] = useState(false);
+
     const [filters, setFilters] = useState({
         class: '',
         section: '',
         subject: '',
-        date: '2026-02-18'
+        date: new Date().toISOString().split('T')[0]
     });
 
     useEffect(() => {
         const fetchClasses = async () => {
             try {
-                const res = await api.get('/academic/classes');
+                const res = await api.get('/api/academic/classes');
                 setClasses(res.data);
             } catch (error) {
                 console.error("Failed to fetch classes");
@@ -30,9 +41,87 @@ const SubjectWiseAttendance = () => {
         fetchClasses();
     }, []);
 
+    useEffect(() => {
+        const fetchSubjects = async () => {
+            if (!filters.class) {
+                setSubjects([]);
+                return;
+            }
+            try {
+                // Fetching subjects for the selected class
+                const res = await api.get(`/api/academic/subjects?classId=${filters.class}`);
+                setSubjects(res.data);
+            } catch (error) {
+                console.error("Failed to fetch subjects");
+            }
+        };
+        fetchSubjects();
+    }, [filters.class]);
+
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFilters(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleSearch = async () => {
+        if (!filters.class || !filters.section || !filters.subject || !filters.date) {
+            showToast('Please select all criteria', 'error');
+            return;
+        }
+        setLoading(true);
+        try {
+            // 1. Fetch all students in the class/section
+            const studentsRes = await api.get(`/api/students?classId=${filters.class}&section=${filters.section}`);
+            const studentList = studentsRes.data;
+
+            // 2. Fetch existing attendance for the date and subject
+            const attendanceRes = await api.get(`/api/attendance?classId=${filters.class}&date=${filters.date}&subjectId=${filters.subject}`);
+            const attendanceData = attendanceRes.data;
+
+            // 3. Merge: Default to 'Present' if no record exists
+            const merged = studentList.map(student => {
+                const existing = attendanceData.find(a => a.student._id === student._id);
+                return {
+                    ...student,
+                    status: existing ? existing.status : 'Present'
+                };
+            });
+
+            setStudents(merged);
+        } catch (error) {
+            console.error('Search Error:', error);
+            showToast('Failed to fetch data', 'error');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleStatusUpdate = (studentId, status) => {
+        setStudents(prev => prev.map(s => s._id === studentId ? { ...s, status } : s));
+    };
+
+    const markAll = (status) => {
+        setStudents(prev => prev.map(s => ({ ...s, status })));
+    };
+
+    const handleSave = async () => {
+        if (students.length === 0) return;
+        setSaving(true);
+        try {
+            const payload = {
+                classId: filters.class,
+                subjectId: filters.subject,
+                date: filters.date,
+                students: students.map(s => ({ id: s._id, status: s.status }))
+            };
+            await api.post('/api/attendance/mark', payload);
+            showToast('Subject attendance saved successfully');
+        } catch (error) {
+            console.error('Save Error:', error);
+            showToast('Failed to save attendance', 'error');
+        } finally {
+            setSaving(false);
+        }
     };
 
     const Label = ({ children, required }) => (
@@ -102,7 +191,7 @@ const SubjectWiseAttendance = () => {
                     </div>
                     <div className="space-y-1.5">
                         <Label required>SUBJECT</Label>
-                        <Select name="subject" value={filters.subject} onChange={handleChange} options={['Maths', 'Science', 'English']} placeholder="Select Subject *" required />
+                        <Select name="subject" value={filters.subject} onChange={handleChange} options={subjects.map(s => ({ value: s._id, label: s.name }))} placeholder="Select Subject *" required />
                     </div>
                     <div className="space-y-1.5">
                         <Label required>Attendance Date</Label>
@@ -111,14 +200,93 @@ const SubjectWiseAttendance = () => {
                 </div>
 
                 <div className="flex justify-end mt-8">
-                    <Button className="bg-[#7c32ff] hover:bg-[#6b25ea] text-white rounded-xl px-8 py-3 text-[10px] font-black uppercase tracking-widest flex items-center space-x-2 shadow-lg shadow-purple-500/20 active:scale-95 transition-all">
+                    <Button
+                        onClick={handleSearch}
+                        disabled={loading}
+                        className="bg-[#7c32ff] hover:bg-[#6b25ea] text-white rounded-xl px-8 py-3 text-[10px] font-black uppercase tracking-widest flex items-center space-x-2 shadow-lg shadow-purple-500/20 active:scale-95 transition-all"
+                    >
                         <Search size={14} strokeWidth={3} />
-                        <span>SEARCH</span>
+                        <span>{loading ? 'SEARCHING...' : 'SEARCH'}</span>
                     </Button>
                 </div>
             </Card>
+
+            {/* Attendance Table */}
+            {students.length > 0 && (
+                <Card className="p-0 border-none shadow-3xl shadow-slate-100 bg-white rounded-3xl overflow-hidden animate-in slide-in-from-bottom duration-500">
+                    <div className="p-8 border-b border-slate-50 flex justify-between items-center">
+                        <div>
+                            <h3 className="text-sm font-black text-slate-700 uppercase tracking-widest">Subject Attendance List</h3>
+                            <p className="text-[10px] font-bold text-slate-400 mt-1">Mark attendance for students in selected subject</p>
+                        </div>
+                        <div className="flex space-x-3">
+                            <Button onClick={() => markAll('Present')} className="bg-emerald-50 text-emerald-600 border border-emerald-100 hover:bg-emerald-100 px-4 py-2 text-[9px] font-black uppercase tracking-widest rounded-lg transition-all">All Present</Button>
+                            <Button onClick={() => markAll('Absent')} className="bg-rose-50 text-rose-600 border border-rose-100 hover:bg-rose-100 px-4 py-2 text-[9px] font-black uppercase tracking-widest rounded-lg transition-all">All Absent</Button>
+                        </div>
+                    </div>
+
+                    <div className="overflow-x-auto no-scrollbar">
+                        <table className="w-full text-left">
+                            <thead className="bg-slate-50/50">
+                                <tr>
+                                    <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest italic tracking-tight">#</th>
+                                    <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest italic tracking-tight">Admission No</th>
+                                    <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest italic tracking-tight">Student Name</th>
+                                    <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest italic tracking-tight text-center">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-50">
+                                {students.map((student, idx) => (
+                                    <tr key={student._id} className="hover:bg-slate-50/30 transition-colors group">
+                                        <td className="px-8 py-4 text-xs font-bold text-slate-400">{idx + 1}</td>
+                                        <td className="px-8 py-4 text-xs font-black text-slate-700 italic uppercase">{student.admissionNumber}</td>
+                                        <td className="px-8 py-4">
+                                            <div className="flex items-center space-x-3">
+                                                <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-300">
+                                                    <UserCircle2 size={24} />
+                                                </div>
+                                                <span className="text-xs font-black text-slate-700 uppercase tracking-tight">{student.firstName} {student.lastName}</span>
+                                            </div>
+                                        </td>
+                                        <td className="px-8 py-4">
+                                            <div className="flex justify-center space-x-2">
+                                                {[
+                                                    { id: 'Present', label: 'P', icon: CheckCircle2, bg: 'bg-emerald-50', text: 'text-emerald-500', active: 'bg-emerald-500 text-white' },
+                                                    { id: 'Late', label: 'L', icon: Clock, bg: 'bg-amber-50', text: 'text-amber-500', active: 'bg-amber-500 text-white' },
+                                                    { id: 'Absent', label: 'A', icon: XCircle, bg: 'bg-rose-50', text: 'text-rose-500', active: 'bg-rose-500 text-white' }
+                                                ].map(st => (
+                                                    <button
+                                                        key={st.id}
+                                                        onClick={() => handleStatusUpdate(student._id, st.id)}
+                                                        className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${student.status === st.id ? st.active : `${st.bg} ${st.text} opacity-40 hover:opacity-100`}`}
+                                                        title={st.id}
+                                                    >
+                                                        <span className="text-[10px] font-black">{st.label}</span>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div className="p-8 border-t border-slate-50 flex justify-end">
+                        <Button
+                            onClick={handleSave}
+                            disabled={saving}
+                            className="bg-[#7c32ff] hover:bg-[#6b25ea] text-white rounded-xl px-12 py-4 text-[11px] font-black uppercase tracking-[0.2em] flex items-center space-x-3 shadow-xl shadow-purple-500/20 hover:scale-105 active:scale-95 transition-all"
+                        >
+                            <Save size={18} strokeWidth={3} />
+                            <span>{saving ? 'SAVING...' : 'SAVE ATTENDANCE'}</span>
+                        </Button>
+                    </div>
+                </Card>
+            )}
         </div>
     );
 };
 
 export default SubjectWiseAttendance;
+

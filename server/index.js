@@ -25,7 +25,7 @@ app.use('/api/school', require('./middleware/tenantMiddleware'), require('./rout
 app.use('/api/school/rbac', require('./middleware/tenantMiddleware'), require('./routes/roleRoutes'));
 app.use('/api/academic', require('./middleware/tenantMiddleware'), require('./routes/academicRoutes'));
 app.use('/api/timetable', require('./middleware/tenantMiddleware'), require('./routes/timetableRoutes'));
-app.use('/api/enquiries', require('./middleware/tenantMiddleware'), require('./routes/enquiryRoutes'));
+app.use('/api/online-admission/enquiries', require('./middleware/tenantMiddleware'), require('./routes/enquiryRoutes'));
 app.use('/api/students', require('./middleware/tenantMiddleware'), require('./routes/studentRoutes'));
 app.use('/api/attendance', require('./middleware/tenantMiddleware'), require('./routes/attendanceRoutes'));
 app.use('/api/fees', require('./middleware/tenantMiddleware'), require('./routes/feeRoutes'));
@@ -39,7 +39,6 @@ app.use('/api/announcements', require('./middleware/tenantMiddleware'), require(
 app.use('/api/admin-section', require('./middleware/tenantMiddleware'), require('./routes/adminSectionRoutes'));
 app.use('/api/lesson-plan', require('./middleware/tenantMiddleware'), require('./routes/lessonPlanRoutes'));
 app.use('/api/study-material', require('./middleware/tenantMiddleware'), require('./routes/contentRoutes'));
-app.use('/api/study-material', require('./middleware/tenantMiddleware'), require('./routes/contentRoutes'));
 app.use('/api/dormitory', require('./middleware/tenantMiddleware'), require('./routes/dormitoryRoutes'));
 app.use('/api/transport', require('./middleware/tenantMiddleware'), require('./routes/transportRoutes'));
 app.use('/api/library', require('./middleware/tenantMiddleware'), require('./routes/libraryRoutes'));
@@ -47,6 +46,7 @@ app.use('/api/online-admission', require('./middleware/tenantMiddleware'), requi
 app.use('/api/teacher-evaluation', require('./middleware/tenantMiddleware'), require('./routes/teacherEvaluationRoutes'));
 app.use('/api/staff-attendance', require('./middleware/tenantMiddleware'), require('./routes/staffAttendanceRoutes'));
 app.use('/api/payroll', require('./middleware/tenantMiddleware'), require('./routes/payrollRoutes'));
+app.use('/api/staff-settings', require('./middleware/tenantMiddleware'), require('./routes/staffSettingsRoutes'));
 app.use('/api/upload', require('./routes/uploadRoutes'));
 
 // Serve Uploads Static Folder

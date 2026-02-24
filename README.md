@@ -111,6 +111,42 @@ Default passwords for newly admitted students and parents:
 }
 ```
 
+### Bulk Fetch Students
+- **URL**: `/api/students/bulk-fetch`
+- **Method**: `POST`
+- **Headers**: `Authorization`, `x-school-slug`
+- **Body**:
+```json
+{
+    "ids": ["ID1", "ID2", "ID3"]
+}
+```
+
+### Partial Update Student
+- **URL**: `/api/students/:id`
+- **Method**: `PATCH`
+- **Headers**: `Authorization`, `x-school-slug`
+- **Body**: Partial fields from the Add Student body.
+
+### Add Multi-Class Assignment
+- **URL**: `/api/students/multi-class`
+- **Method**: `POST`
+- **Headers**: `Authorization`, `x-school-slug`
+- **Body**:
+```json
+{
+    "studentId": "STUDENT_ID",
+    "classId": "CLASS_ID",
+    "section": "A",
+    "academicYearId": "SESSION_ID"
+}
+```
+
+### Delete Multi-Class Assignment
+- **URL**: `/api/students/multi-class/:id`
+- **Method**: `DELETE`
+- **Headers**: `Authorization`, `x-school-slug`
+
 ### Add Document to Student
 - **URL**: `/api/students/:id/documents`
 - **Method**: `POST`
@@ -173,6 +209,66 @@ Use a **Student Token** or **Parent Token** for these requests.
 - **URL**: `/api/academic/classes`
 - **Method**: `GET`
 - **Headers**: `Authorization`, `x-school-slug`
+- **Response**: Returns classes with `sectionCounts` and `totalStudentCount`.
+
+### Create Class
+- **URL**: `/api/academic/classes`
+- **Method**: `POST`
+- **Headers**: `Authorization`, `x-school-slug`
+- **Body**:
+```json
+{
+    "name": "Class 10",
+    "medium": "English",
+    "sections": ["A", "B"]
+}
+```
+
+### Update Class
+- **URL**: `/api/academic/classes/:id`
+- **Method**: `PUT`
+- **Headers**: `Authorization`, `x-school-slug`
+- **Body**: Full or partial class fields.
+
+### Delete Class
+- **URL**: `/api/academic/classes/:id`
+- **Method**: `DELETE`
+- **Headers**: `Authorization`, `x-school-slug`
+- **Constraint**: Cannot delete if students are assigned to the class.
+
+### Get Sections
+- **URL**: `/api/academic/sections`
+- **Method**: `GET`
+- **Headers**: `Authorization`, `x-school-slug`
+
+### Create Section
+- **URL**: `/api/academic/sections`
+- **Method**: `POST`
+- **Headers**: `Authorization`, `x-school-slug`
+- **Body**: `{ "name": "E" }`
+
+### Delete Section
+- **URL**: `/api/academic/sections/:id`
+- **Method**: `DELETE`
+- **Headers**: `Authorization`, `x-school-slug`
+
+### Get Academic Structure (Mediums/Shifts/Streams)
+- **URL**: `/api/academic/structure`
+- **Method**: `GET`
+- **Headers**: `Authorization`, `x-school-slug`
+
+### Update Academic Structure
+- **URL**: `/api/academic/structure`
+- **Method**: `PUT`
+- **Headers**: `Authorization`, `x-school-slug`
+- **Body**:
+```json
+{
+    "mediums": ["English", "Hindi"],
+    "shifts": ["Morning", "Afternoon"],
+    "streams": ["Science", "Commerce"]
+}
+```
 
 ### Get Sessions (Academic Years)
 - **URL**: `/api/academic/sessions`
@@ -290,3 +386,423 @@ Use a **Student Token** or **Parent Token** for these requests.
     "class": "CLASS_ID"
 }
 ```
+
+---
+
+## 7. Homework
+
+### Get Homework List (Filterable)
+- **URL**: `/api/homework?classId=CLASS_ID&section=A&status=Assigned`
+- **Method**: `GET`
+- **Headers**: `Authorization`, `x-school-slug`
+- **Query Params**: `classId`, `section`, `status`, `from`, `to` (all optional)
+
+### Add Homework
+- **URL**: `/api/homework`
+- **Method**: `POST`
+- **Headers**: `Authorization`, `x-school-slug`
+- **Body**:
+```json
+{
+    "class": "CLASS_ID",
+    "section": "A",
+    "subject": "SUBJECT_ID",
+    "topic": "Chapter 5 - Fractions",
+    "description": "Solve all exercises from page 45",
+    "assignDate": "2026-02-24",
+    "dueDate": "2026-02-27",
+    "maxMarks": 20
+}
+```
+
+### Delete Homework
+- **URL**: `/api/homework/:id`
+- **Method**: `DELETE`
+- **Headers**: `Authorization`, `x-school-slug`
+
+---
+
+## 8. Behaviour Records (Discipline)
+
+### Get All Incidents (Filterable)
+- **URL**: `/api/discipline?category=Behavior&status=Open`
+- **Method**: `GET`
+- **Headers**: `Authorization`, `x-school-slug`
+- **Query Params**: `studentId`, `classId`, `category`, `status`, `from`, `to` (all optional)
+
+### Assign Incident to Student
+- **URL**: `/api/discipline`
+- **Method**: `POST`
+- **Headers**: `Authorization`, `x-school-slug`
+- **Body**:
+```json
+{
+    "student": "STUDENT_ID",
+    "class": "CLASS_ID",
+    "category": "Behavior",
+    "description": "Disruptive behaviour during class",
+    "date": "2026-02-24",
+    "status": "Open"
+}
+```
+- **Category options**: `Uniform`, `Behavior`, `Late`, `Homework`, `Other`
+- **Status options**: `Open`, `Under Review`, `Action Taken`, `Closed`
+
+### Delete Incident
+- **URL**: `/api/discipline/:id`
+- **Method**: `DELETE`
+- **Headers**: `Authorization`, `x-school-slug`
+
+---
+
+## 9. Library
+
+### Get Book List (Filterable)
+- **URL**: `/api/library/books?category=Fiction&search=harry`
+- **Method**: `GET`
+- **Headers**: `Authorization`, `x-school-slug`
+- **Query Params**: `category`, `search` (both optional)
+
+### Add Book
+- **URL**: `/api/library/books`
+- **Method**: `POST`
+- **Headers**: `Authorization`, `x-school-slug`
+- **Body**:
+```json
+{
+    "title": "The Great Gatsby",
+    "isbn": "978-3-16-148410-0",
+    "author": "F. Scott Fitzgerald",
+    "category": "Fiction",
+    "subject": "English Literature",
+    "shelf": "A-12",
+    "publisher": "Scribner",
+    "publishDate": "1925-04-10",
+    "copies": 5,
+    "price": 299,
+    "description": "A classic novel set in the Jazz Age."
+}
+```
+
+### Delete Book
+- **URL**: `/api/library/books/:id`
+- **Method**: `DELETE`
+- **Headers**: `Authorization`, `x-school-slug`
+
+- **Response**: Array of distinct category strings (e.g. `["Fiction", "Science", "History"]`)
+
+### Get Library Subjects
+- **URL**: `/api/library/subjects`
+- **Method**: `GET`
+- **Headers**: `Authorization`, `x-school-slug`
+
+### Add Library Subject
+- **URL**: `/api/library/subjects`
+- **Method**: `POST`
+- **Headers**: `Authorization`, `x-school-slug`
+- **Body**: `{ "name": "English Literature" }`
+
+### Get Library Members
+- **URL**: `/api/library/members?search=Kaushik`
+- **Method**: `GET`
+- **Headers**: `Authorization`, `x-school-slug`
+
+### Add Library Member
+- **URL**: `/api/library/members`
+- **Method**: `POST`
+- **Headers**: `Authorization`, `x-school-slug`
+- **Body**: `{ "memberId": "STUDENT_OR_STAFF_ID", "memberType": "Student", "name": "Kaushik" }`
+
+### Issue Book
+- **URL**: `/api/library/books/:id/issue`
+- **Method**: `POST`
+- **Headers**: `Authorization`, `x-school-slug`
+- **Body**:
+```json
+{
+    "memberId": "MEMBER_ID",
+    "memberName": "Kaushik",
+    "memberType": "Student",
+    "dueDate": "2026-03-10"
+}
+```
+
+### Return Book
+- **URL**: `/api/library/books/:id/return`
+- **Method**: `POST`
+- **Headers**: `Authorization`, `x-school-slug`
+
+---
+
+## 10. Transport
+
+### Get Vehicles
+- **URL**: `/api/transport/vehicles`
+- **Method**: `GET`
+- **Headers**: `Authorization`, `x-school-slug`
+
+### Add Vehicle
+- **URL**: `/api/transport/vehicles`
+- **Method**: `POST`
+- **Headers**: `Authorization`, `x-school-slug`
+- **Body**:
+```json
+{
+    "vehicleNumber": "GJ05AB1234",
+    "type": "Bus",
+    "vehicleModel": "Tata Starbus",
+    "yearMade": "2022",
+    "driverName": "Ramesh Patel",
+    "driverPhone": "+919876543210",
+    "driverLicense": "DL-1234567890",
+    "capacity": 40,
+    "route": "ROUTE_ID",
+    "note": "Main route bus"
+}
+```
+
+### Update Vehicle
+- **URL**: `/api/transport/vehicles/:id`
+- **Method**: `PUT`
+- **Headers**: `Authorization`, `x-school-slug`
+- **Body**: Any fields from Add Vehicle body.
+
+### Delete Vehicle
+- **URL**: `/api/transport/vehicles/:id`
+- **Method**: `DELETE`
+- **Headers**: `Authorization`, `x-school-slug`
+
+### Get Transport Routes
+- **URL**: `/api/transport/routes`
+- **Method**: `GET`
+- **Headers**: `Authorization`, `x-school-slug`
+
+### Add Transport Route
+- **URL**: `/api/transport/routes`
+- **Method**: `POST`
+- **Headers**: `Authorization`, `x-school-slug`
+- **Body**:
+```json
+{
+    "title": "Route A - North Zone",
+    "stops": ["Main Gate", "City Mall", "Railway Station"],
+    "fare": 1500
+}
+```
+
+### Update Transport Route
+- **URL**: `/api/transport/routes/:id`
+- **Method**: `PUT`
+- **Headers**: `Authorization`, `x-school-slug`
+- **Body**: Any fields from Add Route body.
+
+### Delete Transport Route
+- **URL**: `/api/transport/routes/:id`
+- **Method**: `DELETE`
+- **Headers**: `Authorization`, `x-school-slug`
+
+### Get Student Transport Assignments
+- **URL**: `/api/transport/assignments?routeId=ROUTE_ID`
+- **Method**: `GET`
+- **Headers**: `Authorization`, `x-school-slug`
+- **Query Params**: `routeId` (optional, filter by route)
+- **Response**: Array of students with their assigned `transportRoute` and `transportStop`.
+
+### Assign Student to Transport Route
+- **URL**: `/api/transport/assignments`
+- **Method**: `POST`
+- **Headers**: `Authorization`, `x-school-slug`
+- **Body**:
+```json
+{
+    "studentId": "STUDENT_ID",
+    "routeId": "ROUTE_ID",
+    "stopName": "City Mall"
+}
+```
+
+### Remove Student Transport Assignment
+- **URL**: `/api/transport/assignments/:studentId`
+- **Method**: `DELETE`
+- **Headers**: `Authorization`, `x-school-slug`
+
+---
+
+## 11. Dormitory
+
+### Get Dormitories
+- **URL**: `/api/dormitory`
+- **Method**: `GET`
+- **Headers**: `Authorization`, `x-school-slug`
+
+### Add Dormitory
+- **URL**: `/api/dormitory`
+- **Method**: `POST`
+- **Headers**: `Authorization`, `x-school-slug`
+- **Body**:
+```json
+{
+    "name": "Boys Hostel A",
+    "type": "Boys",
+    "capacity": 100,
+    "warden": "Suresh Kumar",
+    "description": "Main boys dormitory block"
+}
+```
+
+### Update Dormitory
+- **URL**: `/api/dormitory/:id`
+- **Method**: `PUT`
+- **Headers**: `Authorization`, `x-school-slug`
+- **Body**: Any fields from Add Dormitory body.
+
+### Delete Dormitory
+- **URL**: `/api/dormitory/:id`
+- **Method**: `DELETE`
+- **Headers**: `Authorization`, `x-school-slug`
+
+### Get Dormitory Rooms
+- **URL**: `/api/dormitory/rooms`
+- **Method**: `GET`
+- **Headers**: `Authorization`, `x-school-slug`
+
+### Add Dormitory Room
+- **URL**: `/api/dormitory/rooms`
+- **Method**: `POST`
+- **Headers**: `Authorization`, `x-school-slug`
+- **Body**:
+```json
+{
+    "dormitory": "DORMITORY_ID",
+    "roomNumber": "101",
+    "type": "Double",
+    "capacity": 2,
+    "floor": "Ground"
+}
+```
+
+### Delete Dormitory Room
+- **URL**: `/api/dormitory/rooms/:id`
+- **Method**: `DELETE`
+- **Headers**: `Authorization`, `x-school-slug`
+
+### Get Room Types
+- **URL**: `/api/dormitory/room-types`
+- **Method**: `GET`
+- **Headers**: `Authorization`, `x-school-slug`
+
+### Add Room Type
+- **URL**: `/api/dormitory/room-types`
+- **Method**: `POST`
+- **Headers**: `Authorization`, `x-school-slug`
+- **Body**: `{ "name": "AC", "description": "Air Conditioned Room" }`
+
+### Delete Room Type
+- **URL**: `/api/dormitory/room-types/:id`
+- **Method**: `DELETE`
+- **Headers**: `Authorization`, `x-school-slug`
+
+---
+
+## 12. Attendance
+
+### Mark Attendance
+- **URL**: `/api/attendance/mark`
+- **Method**: `POST`
+- **Headers**: `Authorization`, `x-school-slug`
+- **Body**:
+```json
+{
+    "classId": "CLASS_ID",
+    "date": "2026-02-24",
+    "subjectId": "SUBJECT_ID",
+    "students": [
+        { "id": "STUDENT_ID_1", "status": "Present" },
+        { "id": "STUDENT_ID_2", "status": "Absent" }
+    ]
+}
+```
+
+### Get Attendance Records
+- **URL**: `/api/attendance?classId=CLASS_ID&date=2026-02-24&subjectId=SUBJECT_ID`
+- **Method**: `GET`
+- **Headers**: `Authorization`, `x-school-slug`
+
+### Get Student Attendance History
+- **URL**: `/api/attendance/student/:id`
+- **Method**: `GET`
+- **Headers**: `Authorization`, `x-school-slug`
+
+---
+
+## 13. Front Office (Admission Query & Visitors)
+
+### Get Admission Queries (Enquiries)
+- **URL**: `/api/online-admission/enquiries`
+- **Method**: `GET`
+- **Headers**: `Authorization`, `x-school-slug`
+
+### Add Admission Query
+- **URL**: `/api/online-admission/enquiries`
+- **Method**: `POST`
+- **Headers**: `Authorization`, `x-school-slug`
+- **Body**:
+```json
+{
+    "name": "Jane Doe",
+    "phone": "+919988776655",
+    "email": "jane@example.com",
+    "description": "Looking for class 5 admission",
+    "source": "Newspaper",
+    "assigned": "Staff Member",
+    "status": "Active",
+    "class": "CLASS_ID",
+    "date": "2026-02-24"
+}
+```
+
+### Add Follow Up to Query
+- **URL**: `/api/online-admission/enquiries/:id/follow-up`
+- **Method**: `POST`
+- **Headers**: `Authorization`, `x-school-slug`
+- **Body**:
+```json
+{
+    "date": "2026-02-25",
+    "nextFollowUpDate": "2026-03-01",
+    "note": "Parent will visit the school on Monday."
+}
+```
+
+### Add Visitor
+- **URL**: `/api/admin-section/visitors`
+- **Method**: `POST`
+- **Headers**: `Authorization`, `x-school-slug`
+- **Body**:
+```json
+{
+    "name": "John Visitor",
+    "phone": "+919988776655",
+    "purpose": "Inquiry",
+    "visitorId": "", 
+    "date": "2026-02-24",
+    "inTime": "10:00 AM",
+    "outTime": "11:00 AM"
+}
+```
+- **Note**: `visitorId` will be auto-generated if left empty.
+
+---
+
+## 14. Human Resource
+
+### Get Designations
+- **URL**: `/api/hr/designations`
+- **Method**: `GET`
+- **Headers**: `Authorization`, `x-school-slug`
+
+### Add Designation
+- **URL**: `/api/hr/designations`
+- **Method**: `POST`
+- **Headers**: `Authorization`, `x-school-slug`
+- **Body**: `{ "name": "Senior Teacher" }`

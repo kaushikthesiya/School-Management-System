@@ -19,6 +19,15 @@ const AdmissionQuery = () => {
         status: 'All'
     });
 
+    const [openDropdownId, setOpenDropdownId] = useState(null);
+    const [selectedQuery, setSelectedQuery] = useState(null);
+    const [isFollowUpModalOpen, setIsFollowUpModalOpen] = useState(false);
+    const [followUpData, setFollowUpData] = useState({
+        note: '',
+        status: '',
+        nextFollowUp: format(new Date(Date.now() + 86400000), 'yyyy-MM-dd')
+    });
+
     const [formData, setFormData] = useState({
         name: '',
         phone: '',
@@ -47,7 +56,7 @@ const AdmissionQuery = () => {
             if (filters.source !== 'All') params.append('source', filters.source);
             if (filters.status !== 'All') params.append('status', filters.status);
 
-            const { data } = await api.get(`/api/enquiries?${params.toString()}`);
+            const { data } = await api.get(`/api/online-admission/enquiries?${params.toString()}`);
             setQueries(Array.isArray(data) ? data : []);
         } catch (error) {
             console.error('Fetch Queries Error:', error);
@@ -84,7 +93,11 @@ const AdmissionQuery = () => {
         e.preventDefault();
         try {
             const payload = { ...formData, assignedName: formData.assigned };
-            await api.post('/api/enquiries', payload);
+            if (formData._id) {
+                await api.put(`/api/online-admission/enquiries/${formData._id}`, payload);
+            } else {
+                await api.post('/api/online-admission/enquiries', payload);
+            }
             setIsModalOpen(false);
             fetchQueries();
             // Reset form
@@ -107,6 +120,72 @@ const AdmissionQuery = () => {
         }
     };
 
+    const openAddModal = () => {
+        setFormData({
+            name: '',
+            phone: '',
+            email: '',
+            address: '',
+            description: '',
+            date: format(new Date(), 'yyyy-MM-dd'),
+            nextFollowUp: format(new Date(Date.now() + 86400000), 'yyyy-MM-dd'),
+            assigned: '',
+            reference: '',
+            source: '',
+            classId: '',
+            noOfChild: ''
+        });
+        setIsModalOpen(true);
+    };
+
+    const handleDelete = async (id) => {
+        if (window.confirm('Are you sure you want to delete this enquiry?')) {
+            try {
+                await api.delete(`/api/online-admission/enquiries/${id}`);
+                fetchQueries();
+            } catch (error) {
+                console.error('Delete Enquiry Error:', error);
+            }
+        }
+    };
+
+    const handleFollowUpSubmit = async (e) => {
+        e.preventDefault();
+        try {
+            await api.post(`/api/online-admission/enquiries/${selectedQuery._id}/follow-up`, followUpData);
+            setIsFollowUpModalOpen(false);
+            fetchQueries();
+            setFollowUpData({
+                note: '',
+                status: '',
+                nextFollowUp: format(new Date(Date.now() + 86400000), 'yyyy-MM-dd')
+            });
+        } catch (error) {
+            console.error('Follow up Error:', error);
+        }
+    };
+
+    const openEditModal = (item) => {
+        setFormData({
+            ...item,
+            classId: item.class?._id || item.class || '',
+            assigned: item.assignedName || ''
+        });
+        setIsModalOpen(true);
+        setOpenDropdownId(null);
+    };
+
+    const openFollowUpModal = (item) => {
+        setSelectedQuery(item);
+        setFollowUpData({
+            note: '',
+            status: item.status,
+            nextFollowUp: format(new Date(Date.now() + 86400000), 'yyyy-MM-dd')
+        });
+        setIsFollowUpModalOpen(true);
+        setOpenDropdownId(null);
+    };
+
     return (
         <div className="space-y-6 animate-in fade-in duration-500 pb-12">
             <div className="flex justify-between items-center bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
@@ -122,7 +201,7 @@ const AdmissionQuery = () => {
                 </div>
                 <div className="flex space-x-3">
                     <Button
-                        onClick={() => setIsModalOpen(true)}
+                        onClick={openAddModal}
                         className="bg-[#1C1C1C] hover:bg-black text-white rounded-xl px-6 py-3 text-[10px] font-black uppercase tracking-widest flex items-center space-x-2 shadow-lg shadow-purple-500/20 active:scale-95 transition-all"
                     >
                         <Plus size={14} strokeWidth={3} />
@@ -270,15 +349,51 @@ const AdmissionQuery = () => {
                                                 </div>
                                             ) : '-'}
                                         </td>
-                                        <td className="px-8 py-5 text-right">
+                                        <td className="px-8 py-5 text-right relative">
                                             <div className="flex justify-end space-x-4">
-                                                <button
-                                                    onClick={() => navigate(`/${school_slug}/add-student?enquiry=${item._id}`)}
-                                                    className="flex items-center space-x-3 px-6 py-2.5 bg-white border-2 border-primary text-primary rounded-full text-[10px] font-black tracking-widest hover:bg-primary hover:text-white transition-all group shadow-lg shadow-primary/5 active:scale-95"
-                                                >
-                                                    <span>SELECT</span>
-                                                    <ChevronDown size={14} strokeWidth={3} className="group-hover:rotate-180 transition-transform" />
-                                                </button>
+                                                <div className="relative">
+                                                    <button
+                                                        onClick={() => setOpenDropdownId(openDropdownId === item._id ? null : item._id)}
+                                                        className="flex items-center space-x-3 px-6 py-2.5 bg-white border-2 border-primary text-primary rounded-full text-[10px] font-black tracking-widest hover:bg-primary hover:text-white transition-all group shadow-lg shadow-primary/5 active:scale-95"
+                                                    >
+                                                        <span>SELECT</span>
+                                                        <ChevronDown size={14} strokeWidth={3} className={`${openDropdownId === item._id ? 'rotate-180' : ''} transition-transform`} />
+                                                    </button>
+
+                                                    {openDropdownId === item._id && (
+                                                        <div className="absolute right-0 mt-2 w-48 bg-white rounded-2xl shadow-xl border border-slate-100 py-2 z-50 animate-in fade-in zoom-in-95 duration-200">
+                                                            <button
+                                                                onClick={() => navigate(`/${school_slug}/add-student?enquiry=${item._id}`)}
+                                                                className="w-full text-left px-5 py-2.5 text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-slate-50 hover:text-primary transition-colors flex items-center space-x-2"
+                                                            >
+                                                                <UserPlus size={14} />
+                                                                <span>Admit Student</span>
+                                                            </button>
+                                                            <button
+                                                                onClick={() => openFollowUpModal(item)}
+                                                                className="w-full text-left px-5 py-2.5 text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-slate-50 hover:text-emerald-500 transition-colors flex items-center space-x-2"
+                                                            >
+                                                                <Share2 size={14} />
+                                                                <span>Follow Up</span>
+                                                            </button>
+                                                            <button
+                                                                onClick={() => openEditModal(item)}
+                                                                className="w-full text-left px-5 py-2.5 text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-slate-50 hover:text-indigo-500 transition-colors flex items-center space-x-2"
+                                                            >
+                                                                <FileText size={14} />
+                                                                <span>Edit</span>
+                                                            </button>
+                                                            <div className="h-[1px] bg-slate-100 my-1 mx-4"></div>
+                                                            <button
+                                                                onClick={() => handleDelete(item._id)}
+                                                                className="w-full text-left px-5 py-2.5 text-[10px] font-black uppercase tracking-widest text-red-400 hover:bg-red-50 hover:text-red-500 transition-colors flex items-center space-x-2"
+                                                            >
+                                                                <X size={14} />
+                                                                <span>Delete</span>
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </div>
                                                 <a
                                                     href={`tel:${item.phone}`}
                                                     className="p-2.5 text-slate-300 hover:text-indigo-500 hover:bg-indigo-50 rounded-xl transition-all shadow-sm border border-transparent hover:border-indigo-100"
@@ -426,6 +541,60 @@ const AdmissionQuery = () => {
                             className="px-12 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-black italic uppercase tracking-widest text-[11px] shadow-lg shadow-indigo-200"
                         >
                             Save
+                        </Button>
+                    </div>
+                </form>
+            </Modal>
+
+            {/* Follow Up Modal */}
+            <Modal
+                isOpen={isFollowUpModalOpen}
+                onClose={() => setIsFollowUpModalOpen(false)}
+                title="Add Follow Up"
+            >
+                <form onSubmit={handleFollowUpSubmit} className="space-y-8 pb-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <Select
+                            label="Status *"
+                            options={statuses.filter(s => s !== 'All')}
+                            value={followUpData.status}
+                            onChange={val => setFollowUpData(prev => ({ ...prev, status: val }))}
+                            required
+                        />
+                        <Input
+                            label="Next Follow Up Date *"
+                            type="date"
+                            value={followUpData.nextFollowUp}
+                            onChange={e => setFollowUpData(prev => ({ ...prev, nextFollowUp: e.target.value }))}
+                            required
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <label className="text-sm font-bold text-navy-700 ml-1 italic uppercase tracking-wider">Note *</label>
+                        <textarea
+                            value={followUpData.note}
+                            onChange={e => setFollowUpData(prev => ({ ...prev, note: e.target.value }))}
+                            className="w-full bg-slate-50 border border-slate-100 rounded-3xl p-5 text-sm font-bold text-slate-600 outline-none focus:ring-4 focus:ring-primary/5 focus:border-primary transition-all resize-none h-32"
+                            placeholder="Enter follow up note..."
+                            required
+                        ></textarea>
+                    </div>
+
+                    <div className="flex justify-between items-center pt-6">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            className="px-10 border-slate-200 text-slate-500 hover:bg-slate-50 rounded-xl font-black italic uppercase tracking-widest text-[11px]"
+                            onClick={() => setIsFollowUpModalOpen(false)}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            type="submit"
+                            variant="primary"
+                            className="px-12 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black italic uppercase tracking-widest text-[11px] shadow-lg shadow-emerald-200"
+                        >
+                            Save Follow Up
                         </Button>
                     </div>
                 </form>

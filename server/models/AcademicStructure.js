@@ -10,7 +10,8 @@ const academicStructureSchema = new mongoose.Schema({
     }],
     streams: [{ type: String }], // e.g., ['Science', 'Commerce', 'Arts']
     semesters: [{ type: String }], // e.g., ['Semester 1', 'Semester 2']
-    departments: [{ type: String }] // e.g., ['Primary', 'Secondary', 'Admin']
+    departments: [{ type: String }], // e.g., ['Primary', 'Secondary', 'Admin']
+    studentAdmissionSettings: { type: mongoose.Schema.Types.Mixed, default: {} }
 }, { timestamps: true });
 
 module.exports = (connection) => {

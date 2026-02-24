@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Card, Button, Input } from '../../components/SnowUI';
 import {
     Save,
@@ -30,6 +30,10 @@ import api from '../../api/api';
 const AddStudent = () => {
     const { id } = useParams();
     const navigate = useNavigate();
+    const location = useLocation();
+    const searchParams = new URLSearchParams(location.search);
+    const enquiryId = searchParams.get('enquiry');
+
     const [activeTab, setActiveTab] = useState('personal');
     const [classes, setClasses] = useState([]);
     const [sessions, setSessions] = useState([]);
@@ -148,6 +152,18 @@ const AddStudent = () => {
                         dob: data.dob ? data.dob.split('T')[0] : '',
                         admissionDate: data.admissionDate ? data.admissionDate.split('T')[0] : ''
                     });
+                } else if (enquiryId) {
+                    const { data: enquiry } = await api.get(`/api/online-admission/enquiries/${enquiryId}`);
+                    setFormData(prev => ({
+                        ...prev,
+                        firstName: enquiry.name.split(' ')[0],
+                        lastName: enquiry.name.split(' ').slice(1).join(' '),
+                        phone: enquiry.phone,
+                        email: enquiry.email || '',
+                        currentAddress: enquiry.address || '',
+                        class: enquiry.class?._id || enquiry.class || '',
+                        additionalNotes: `Converted from Admission Enquiry. Original Note: ${enquiry.description || ''}`
+                    }));
                 } else {
                     // Set default academic year if active session exists
                     const activeSession = sessionRes.data.find(s => s.status === 'Active');
@@ -162,7 +178,7 @@ const AddStudent = () => {
             }
         };
         fetchData();
-    }, [id]);
+    }, [id, enquiryId]);
 
     useEffect(() => {
         // Update sections when class changes

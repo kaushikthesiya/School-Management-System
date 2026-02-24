@@ -1,10 +1,14 @@
-import React, { useState } from 'react';
-import { Card } from '../../components/SnowUI';
+import React, { useState, useEffect } from 'react';
+import { Card, Button } from '../../components/SnowUI';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Save } from 'lucide-react';
+import api from '../../api/api';
+import { useToast } from '../../context/ToastContext';
 
 const StudentSettings = () => {
     const navigate = useNavigate();
+    const { showToast } = useToast();
+    const [loading, setLoading] = useState(false);
 
     const admissionFields = [
         "Session", "Class", "Section", "Roll Number", "Admission Number", "First Name", "Last Name",
@@ -27,19 +31,36 @@ const StudentSettings = () => {
                 parentEdit: false,
                 required: false
             };
-            // Matching some default states from the photo
-            if (field === "Roll Number") acc[field].studentEdit = true;
-            if (field === "Guardian Email") acc[field].required = true;
-            if (["First Name", "Last Name", "Gender", "Date Of Birth", "Email Address", "Phone Number", "Father's Name", "Father Occupation", "Fathers Phone"].includes(field)) {
-                acc[field].studentEdit = true;
-                acc[field].parentEdit = true;
-            }
-            if (field === "Session" || field === "Class" || field === "Section" || field === "Admission Number" || field === "First Name" || field === "Last Name" || field === "Gender" || field === "Date Of Birth" || field === "Guardian Email") {
-                acc[field].required = true;
-            }
             return acc;
         }, {})
     );
+
+    useEffect(() => {
+        const fetchSettings = async () => {
+            try {
+                const res = await api.get('/api/academic/settings/student-admission');
+                if (Object.keys(res.data).length > 0) {
+                    setFieldSettings(res.data);
+                }
+            } catch (error) {
+                console.error('Failed to fetch settings');
+            }
+        };
+        fetchSettings();
+    }, []);
+
+    const handleSave = async () => {
+        setLoading(true);
+        try {
+            await api.patch('/api/academic/settings/student-admission', fieldSettings);
+            showToast('Settings saved successfully');
+        } catch (error) {
+            console.error('Save Error:', error);
+            showToast('Failed to save settings', 'error');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const Toggle = ({ checked, onChange }) => (
         <label className="relative inline-flex items-center cursor-pointer">
@@ -70,6 +91,15 @@ const StudentSettings = () => {
                         </div>
                     </div>
                 </div>
+
+                <Button
+                    onClick={handleSave}
+                    disabled={loading}
+                    className="bg-[#7c32ff] hover:bg-[#6b25ea] text-white rounded-xl px-6 py-3 text-[10px] font-black uppercase tracking-widest flex items-center space-x-2 shadow-lg shadow-purple-500/20 active:scale-95 transition-all"
+                >
+                    <Save size={14} strokeWidth={3} />
+                    <span>{loading ? 'SAVING...' : 'SAVE SETTINGS'}</span>
+                </Button>
             </div>
 
             <Card className="p-0 border-none shadow-3xl shadow-slate-100 bg-white rounded-3xl overflow-hidden relative">
@@ -82,7 +112,7 @@ const StudentSettings = () => {
                     </div>
                 </div>
 
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto no-scrollbar">
                     <table className="w-full">
                         <thead className="bg-slate-50/50">
                             <tr className="border-b border-slate-100">
@@ -99,37 +129,37 @@ const StudentSettings = () => {
                                     <td className="py-4 px-8 text-[11px] font-bold text-slate-600 uppercase tracking-tight italic">{field}</td>
                                     <td className="py-4 px-4 text-center">
                                         <Toggle
-                                            checked={fieldSettings[field].show}
+                                            checked={fieldSettings[field]?.show || false}
                                             onChange={() => setFieldSettings({
                                                 ...fieldSettings,
-                                                [field]: { ...fieldSettings[field], show: !fieldSettings[field].show }
+                                                [field]: { ...fieldSettings[field], show: !fieldSettings[field]?.show }
                                             })}
                                         />
                                     </td>
                                     <td className="py-4 px-4 text-center">
                                         <Toggle
-                                            checked={fieldSettings[field].studentEdit}
+                                            checked={fieldSettings[field]?.studentEdit || false}
                                             onChange={() => setFieldSettings({
                                                 ...fieldSettings,
-                                                [field]: { ...fieldSettings[field], studentEdit: !fieldSettings[field].studentEdit }
+                                                [field]: { ...fieldSettings[field], studentEdit: !fieldSettings[field]?.studentEdit }
                                             })}
                                         />
                                     </td>
                                     <td className="py-4 px-4 text-center">
                                         <Toggle
-                                            checked={fieldSettings[field].parentEdit}
+                                            checked={fieldSettings[field]?.parentEdit || false}
                                             onChange={() => setFieldSettings({
                                                 ...fieldSettings,
-                                                [field]: { ...fieldSettings[field], parentEdit: !fieldSettings[field].parentEdit }
+                                                [field]: { ...fieldSettings[field], parentEdit: !fieldSettings[field]?.parentEdit }
                                             })}
                                         />
                                     </td>
                                     <td className="py-4 px-4 text-center">
                                         <Toggle
-                                            checked={fieldSettings[field].required}
+                                            checked={fieldSettings[field]?.required || false}
                                             onChange={() => setFieldSettings({
                                                 ...fieldSettings,
-                                                [field]: { ...fieldSettings[field], required: !fieldSettings[field].required }
+                                                [field]: { ...fieldSettings[field], required: !fieldSettings[field]?.required }
                                             })}
                                         />
                                     </td>
@@ -157,3 +187,4 @@ const StudentSettings = () => {
 };
 
 export default StudentSettings;
+

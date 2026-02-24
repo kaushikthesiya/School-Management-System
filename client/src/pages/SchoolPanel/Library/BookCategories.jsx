@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     Search, Download, Printer, FileText, LayoutGrid, ChevronDown, Edit, Trash2
 } from 'lucide-react';
 import { Card, Button } from '../../../components/SnowUI';
+import api from '../../../api/api';
 
 const Input = ({ label, name, value, onChange, placeholder, required, type = "text" }) => (
     <div className="space-y-2 group">
@@ -26,8 +27,46 @@ const BookCategories = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [categoryName, setCategoryName] = useState('');
     const [openActionId, setOpenActionId] = useState(null);
+    const [categories, setCategories] = useState([]);
+    const [loading, setLoading] = useState(false);
 
-    const [categories] = useState([]); // Empty state as per Photo 3
+    useEffect(() => {
+        fetchCategories();
+    }, []);
+
+    const fetchCategories = async () => {
+        try {
+            const res = await api.get('/api/library/categories');
+            setCategories(res.data);
+        } catch (error) {
+            console.error('Failed to fetch categories');
+        }
+    };
+
+    const handleSubmit = async () => {
+        if (!categoryName) return alert('Category name is required');
+        try {
+            await api.post('/api/library/categories', { name: categoryName });
+            setCategoryName('');
+            fetchCategories();
+        } catch (error) {
+            alert('Failed to save category');
+        }
+    };
+
+    const handleDelete = async (id) => {
+        if (!window.confirm('Delete this category?')) return;
+        try {
+            await api.delete(`/api/library/categories/${id}`);
+            fetchCategories();
+        } catch (error) {
+            alert('Failed to delete category');
+        }
+    };
+
+    const filteredCategories = categories.filter(cat =>
+        cat.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500 pb-20">
@@ -60,7 +99,10 @@ const BookCategories = () => {
                             required
                         />
                         <div className="flex justify-center pt-4">
-                            <Button className="bg-[#7c32ff] hover:bg-[#6b25ea] text-white rounded-2xl px-10 py-4 text-[10px] font-black uppercase tracking-widest flex items-center space-x-2 shadow-2xl shadow-purple-500/30 active:scale-95 transition-all">
+                            <Button
+                                onClick={handleSubmit}
+                                className="bg-[#7c32ff] hover:bg-[#6b25ea] text-white rounded-2xl px-10 py-4 text-[10px] font-black uppercase tracking-widest flex items-center space-x-2 shadow-2xl shadow-purple-500/30 active:scale-95 transition-all"
+                            >
                                 <span>✓ SAVE CATEGORY</span>
                             </Button>
                         </div>
@@ -110,13 +152,13 @@ const BookCategories = () => {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-50">
-                                {categories.length > 0 ? categories.map((cat, idx) => (
+                                {filteredCategories.length > 0 ? filteredCategories.map((cat, idx) => (
                                     <tr key={idx} className="group hover:bg-slate-50/50 transition-colors">
                                         <td className="py-6 px-6">
                                             <span className="text-xs font-bold text-slate-600">{idx + 1}</span>
                                         </td>
                                         <td className="py-6 px-6">
-                                            <span className="text-xs font-bold text-slate-600">{cat.title}</span>
+                                            <span className="text-xs font-bold text-slate-600">{cat.name}</span>
                                         </td>
                                         <td className="py-6 px-6 text-right relative">
                                             {/* Action Select Dropdown placeholder */}
@@ -139,7 +181,10 @@ const BookCategories = () => {
                                                                 <Edit size={14} className="text-slate-300" />
                                                                 <span>Edit</span>
                                                             </button>
-                                                            <button className="w-full px-5 py-3 text-left text-[10px] font-black text-red-500 hover:bg-red-50 transition-colors uppercase tracking-widest flex items-center space-x-3">
+                                                            <button
+                                                                onClick={() => handleDelete(cat._id)}
+                                                                className="w-full px-5 py-3 text-left text-[10px] font-black text-red-500 hover:bg-red-50 transition-colors uppercase tracking-widest flex items-center space-x-3"
+                                                            >
                                                                 <Trash2 size={14} className="text-red-300" />
                                                                 <span>Delete</span>
                                                             </button>

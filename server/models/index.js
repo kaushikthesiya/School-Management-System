@@ -7,6 +7,9 @@ const tenantModelDefinitions = {
     Announcement: require('./Announcement'),
     Attendance: require('./Attendance'),
     Book: require('./Book'),
+    LibraryCategory: require('./LibraryCategory'),
+    LibrarySubject: require('./LibrarySubject'),
+    LibraryMember: require('./LibraryMember'),
     TransportRoute: require('./TransportRoute'),
     Class: require('./Class'),
     Discipline: require('./Discipline'),
@@ -53,7 +56,13 @@ const tenantModelDefinitions = {
     FeeType: require('./FeeType'),
     StudentCategory: require('./StudentCategory'),
     LeaveType: require('./LeaveType'),
-    StaffAttendance: require('./StaffAttendance')
+    StaffAttendance: require('./StaffAttendance'),
+    Dormitory: require('./Dormitory'),
+    DormitoryRoom: require('./DormitoryRoom'),
+    RoomType: require('./RoomType'),
+    Vehicle: require('./Vehicle'),
+    SmsSettings: require('./SmsSettings'),
+    MultiClassStudent: require('./MultiClassStudent')
 };
 
 /**

@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     Search, Download, Printer, FileText, LayoutGrid, ChevronDown, Edit, Trash2
 } from 'lucide-react';
 import { Card, Button } from '../../../components/SnowUI';
+import api from '../../../api/api';
 
 const Select = ({ label, name, value, onChange, options, placeholder, required }) => (
     <div className="space-y-2 group">
@@ -50,17 +51,67 @@ const LibrarySubject = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [openActionId, setOpenActionId] = useState(null);
     const [formData, setFormData] = useState({
-        subjectName: '',
+        name: '',
         category: '',
-        subjectCode: ''
+        code: ''
     });
 
-    const [subjects] = useState([]);
+    const [subjects, setSubjects] = useState([]);
+    const [categories, setCategories] = useState([]);
+
+    useEffect(() => {
+        fetchSubjects();
+        fetchCategories();
+    }, []);
+
+    const fetchCategories = async () => {
+        try {
+            const res = await api.get('/api/library/categories');
+            setCategories(res.data);
+        } catch (error) {
+            console.error('Failed to fetch categories');
+        }
+    };
+
+    const fetchSubjects = async () => {
+        try {
+            const res = await api.get('/api/library/subjects');
+            setSubjects(res.data);
+        } catch (error) {
+            console.error('Failed to fetch subjects');
+        }
+    };
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
     };
+
+    const handleSubmit = async () => {
+        if (!formData.name || !formData.category) return alert('Name and Category are required');
+        try {
+            await api.post('/api/library/subjects', formData);
+            setFormData({ name: '', category: '', code: '' });
+            fetchSubjects();
+        } catch (error) {
+            alert('Failed to save subject');
+        }
+    };
+
+    const handleDelete = async (id) => {
+        if (!window.confirm('Delete this subject?')) return;
+        try {
+            await api.delete(`/api/library/subjects/${id}`);
+            fetchSubjects();
+        } catch (error) {
+            alert('Failed to delete subject');
+        }
+    };
+
+    const filteredSubjects = subjects.filter(subj =>
+        subj.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        subj.code?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500 pb-20">
@@ -87,8 +138,8 @@ const LibrarySubject = () => {
                     <div className="space-y-6">
                         <Input
                             label="SUBJECT NAME"
-                            name="subjectName"
-                            value={formData.subjectName}
+                            name="name"
+                            value={formData.name}
                             onChange={handleInputChange}
                             placeholder="Subject Name *"
                             required
@@ -99,19 +150,22 @@ const LibrarySubject = () => {
                             value={formData.category}
                             onChange={handleInputChange}
                             placeholder="Category Name"
-                            options={['Science', 'Arts', 'Commerce']}
+                            options={categories.map(c => ({ value: c.name, label: c.name }))}
                             required
                         />
                         <Input
                             label="SUBJECT CODE"
-                            name="subjectCode"
-                            value={formData.subjectCode}
+                            name="code"
+                            value={formData.code}
                             onChange={handleInputChange}
                             placeholder="Subject Code *"
                             required
                         />
                         <div className="flex justify-center pt-6">
-                            <Button className="bg-[#7c32ff] hover:bg-[#6b25ea] text-white rounded-2xl px-12 py-4 text-[10px] font-black uppercase tracking-widest flex items-center space-x-2 shadow-2xl shadow-purple-500/30 active:scale-95 transition-all">
+                            <Button
+                                onClick={handleSubmit}
+                                className="bg-[#7c32ff] hover:bg-[#6b25ea] text-white rounded-2xl px-12 py-4 text-[10px] font-black uppercase tracking-widest flex items-center space-x-2 shadow-2xl shadow-purple-500/30 active:scale-95 transition-all"
+                            >
                                 <span>✓ SAVE SUBJECT</span>
                             </Button>
                         </div>
@@ -167,7 +221,7 @@ const LibrarySubject = () => {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-50">
-                                {subjects.length > 0 ? subjects.map((subj, idx) => (
+                                {filteredSubjects.length > 0 ? filteredSubjects.map((subj, idx) => (
                                     <tr key={idx} className="group hover:bg-slate-50/50 transition-colors">
                                         <td className="py-6 px-6">
                                             <span className="text-xs font-bold text-slate-600">{idx + 1}</span>
@@ -176,7 +230,7 @@ const LibrarySubject = () => {
                                             <span className="text-xs font-bold text-slate-600">{subj.name}</span>
                                         </td>
                                         <td className="py-6 px-6">
-                                            <span className="text-xs font-medium text-slate-400">{subj.categoryName}</span>
+                                            <span className="text-xs font-medium text-slate-400">{subj.category}</span>
                                         </td>
                                         <td className="py-6 px-6">
                                             <span className="text-xs font-medium text-slate-400">{subj.code}</span>
@@ -201,7 +255,10 @@ const LibrarySubject = () => {
                                                                 <Edit size={14} className="text-slate-300" />
                                                                 <span>Edit</span>
                                                             </button>
-                                                            <button className="w-full px-5 py-3 text-left text-[10px] font-black text-red-500 hover:bg-red-50 transition-colors uppercase tracking-widest flex items-center space-x-3">
+                                                            <button
+                                                                onClick={() => handleDelete(subj._id)}
+                                                                className="w-full px-5 py-3 text-left text-[10px] font-black text-red-500 hover:bg-red-50 transition-colors uppercase tracking-widest flex items-center space-x-3"
+                                                            >
                                                                 <Trash2 size={14} className="text-red-300" />
                                                                 <span>Delete</span>
                                                             </button>

@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-    Search, Download, Printer, FileText, LayoutGrid, ChevronDown, Edit, Trash2
+    Search, Download, Printer, FileText, LayoutGrid, ChevronDown, Edit, Trash2, Loader2
 } from 'lucide-react';
 import { Card, Button } from '../../../components/SnowUI';
+import api from '../../../api/api';
 
 const Select = ({ label, name, value, onChange, options, placeholder, required }) => (
     <div className="space-y-2 group">
@@ -66,26 +67,124 @@ const Textarea = ({ label, name, value, onChange, placeholder, required }) => (
 const Vehicle = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [openActionId, setOpenActionId] = useState(null);
+    const [vehicles, setVehicles] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [saving, setSaving] = useState(false);
+    const [editId, setEditId] = useState(null);
+    const [routes, setRoutes] = useState([]);
     const [formData, setFormData] = useState({
         vehicleNumber: '',
+        type: '',
         vehicleModel: '',
         yearMade: '',
-        driver: '',
+        driverName: '',
+        driverLicense: '',
+        driverPhone: '',
+        capacity: '',
+        route: '',
         note: ''
     });
 
-    const [vehicles] = useState([
-        { no: 'INFIX-244', model: 'INFIX-M474', year: '2026', driver: 'Jasper', license: '-', phone: '+88012345678' },
-        { no: 'INFIX-559', model: 'INFIX-M299', year: '2026', driver: 'Jasper', license: '-', phone: '+88012345678' },
-        { no: 'INFIX-695', model: 'INFIX-M160', year: '2026', driver: 'Jasper', license: '-', phone: '+88012345678' },
-        { no: 'INFIX-768', model: 'INFIX-M696', year: '2026', driver: 'Jasper', license: '-', phone: '+88012345678' },
-        { no: 'INFIX-891', model: 'INFIX-M729', year: '2026', driver: 'Jasper', license: '-', phone: '+88012345678' },
-    ]);
+    const fetchMasterData = async () => {
+        try {
+            const { data } = await api.get('/api/transport/routes');
+            setRoutes(data);
+        } catch (err) {
+            console.error('Fetch routes error:', err);
+        }
+    };
+
+    const fetchVehicles = async () => {
+        setLoading(true);
+        try {
+            const { data } = await api.get('/api/transport/vehicles');
+            setVehicles(data);
+        } catch (err) {
+            console.error('Fetch vehicles error:', err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchVehicles();
+        fetchMasterData();
+    }, []);
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
     };
+
+    const resetForm = () => {
+        setFormData({
+            vehicleNumber: '',
+            type: '',
+            vehicleModel: '',
+            yearMade: '',
+            driverName: '',
+            driverLicense: '',
+            driverPhone: '',
+            capacity: '',
+            route: '',
+            note: ''
+        });
+        setEditId(null);
+    };
+
+    const handleSubmit = async () => {
+        if (!formData.vehicleNumber || !formData.type) {
+            alert('Vehicle Number and Type are required');
+            return;
+        }
+        setSaving(true);
+        try {
+            if (editId) {
+                await api.put(`/api/transport/vehicles/${editId}`, formData);
+            } else {
+                await api.post('/api/transport/vehicles', formData);
+            }
+            resetForm();
+            fetchVehicles();
+        } catch (err) {
+            alert(err?.response?.data?.message || 'Failed to save vehicle');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleEdit = (v) => {
+        setEditId(v._id);
+        setFormData({
+            vehicleNumber: v.vehicleNumber || '',
+            type: v.type || '',
+            vehicleModel: v.vehicleModel || '',
+            yearMade: v.yearMade || '',
+            driverName: v.driverName || '',
+            driverLicense: v.driverLicense || '',
+            driverPhone: v.driverPhone || '',
+            capacity: v.capacity || '',
+            route: v.route || '',
+            note: v.note || ''
+        });
+        setOpenActionId(null);
+    };
+
+    const handleDelete = async (id) => {
+        if (!window.confirm('Are you sure you want to delete this vehicle?')) return;
+        try {
+            await api.delete(`/api/transport/vehicles/${id}`);
+            fetchVehicles();
+        } catch (err) {
+            alert('Failed to delete vehicle');
+        }
+        setOpenActionId(null);
+    };
+
+    const filtered = vehicles.filter(v =>
+        (v.vehicleNumber || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (v.driverName || '').toLowerCase().includes(searchTerm.toLowerCase())
+    );
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500 pb-20">
@@ -104,54 +203,43 @@ const Vehicle = () => {
             </div>
 
             <div className="px-4 grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Add Vehicle Card */}
+                {/* Add/Edit Vehicle Card */}
                 <Card className="p-10 border-none shadow-snow-lg bg-white rounded-[40px] h-fit">
                     <h3 className="text-sm font-black text-slate-700 uppercase tracking-widest mb-8">
-                        Add Vehicle
+                        {editId ? 'Edit Vehicle' : 'Add Vehicle'}
                     </h3>
                     <div className="space-y-6">
-                        <Input
-                            label="VEHICLE NUMBER"
-                            name="vehicleNumber"
-                            value={formData.vehicleNumber}
-                            onChange={handleInputChange}
-                            placeholder="Vehicle Number *"
-                            required
-                        />
-                        <Input
-                            label="VEHICLE MODEL"
-                            name="vehicleModel"
-                            value={formData.vehicleModel}
-                            onChange={handleInputChange}
-                            placeholder="Vehicle Model *"
-                            required
-                        />
-                        <Input
-                            label="YEAR MADE"
-                            name="yearMade"
-                            value={formData.yearMade}
-                            onChange={handleInputChange}
-                            placeholder="Year Made"
-                        />
-                        <Select
-                            label="DRIVER"
-                            name="driver"
-                            value={formData.driver}
-                            onChange={handleInputChange}
-                            placeholder="Select Driver *"
-                            options={['Jasper', 'Other']}
-                            required
-                        />
-                        <Textarea
-                            label="NOTE"
-                            name="note"
-                            value={formData.note}
-                            onChange={handleInputChange}
-                            placeholder="Note"
-                        />
-                        <div className="flex justify-center pt-6">
-                            <Button className="bg-[#7c32ff] hover:bg-[#6b25ea] text-white rounded-2xl px-12 py-4 text-[10px] font-black uppercase tracking-widest flex items-center space-x-2 shadow-2xl shadow-purple-500/30 active:scale-95 transition-all w-full">
-                                <span>✓ SAVE VEHICLE</span>
+                        <Input label="VEHICLE NUMBER" name="vehicleNumber" value={formData.vehicleNumber} onChange={handleInputChange} placeholder="Vehicle Number *" required />
+                        <Input label="VEHICLE TYPE" name="type" value={formData.type} onChange={handleInputChange} placeholder="Type (e.g. Bus, Van) *" required />
+                        <Input label="VEHICLE MODEL" name="vehicleModel" value={formData.vehicleModel} onChange={handleInputChange} placeholder="Vehicle Model" />
+                        <Input label="YEAR MADE" name="yearMade" value={formData.yearMade} onChange={handleInputChange} placeholder="Year Made" />
+                        <Input label="DRIVER NAME" name="driverName" value={formData.driverName} onChange={handleInputChange} placeholder="Driver Name" />
+                        <Input label="DRIVER LICENSE" name="driverLicense" value={formData.driverLicense} onChange={handleInputChange} placeholder="Driver License No." />
+                        <Input label="DRIVER PHONE" name="driverPhone" value={formData.driverPhone} onChange={handleInputChange} placeholder="Driver Phone" />
+                        <div className="grid grid-cols-2 gap-4">
+                            <Input label="CAPACITY" name="capacity" value={formData.capacity} onChange={handleInputChange} placeholder="Capacity" type="number" />
+                            <Select
+                                label="ASSIGN ROUTE"
+                                name="route"
+                                value={formData.route}
+                                onChange={handleInputChange}
+                                options={routes.map(r => ({ value: r._id, label: r.title }))}
+                                placeholder="Select Route"
+                            />
+                        </div>
+                        <Textarea label="NOTE" name="note" value={formData.note} onChange={handleInputChange} placeholder="Note" />
+                        <div className="flex gap-3 pt-2">
+                            {editId && (
+                                <button onClick={resetForm} className="flex-1 border border-slate-200 rounded-2xl py-4 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:bg-slate-50 transition-all">
+                                    CANCEL
+                                </button>
+                            )}
+                            <Button
+                                onClick={handleSubmit}
+                                disabled={saving}
+                                className="flex-1 bg-[#7c32ff] hover:bg-[#6b25ea] text-white rounded-2xl py-4 text-[10px] font-black uppercase tracking-widest flex items-center justify-center space-x-2 shadow-2xl shadow-purple-500/30 active:scale-95 transition-all disabled:opacity-50"
+                            >
+                                {saving ? <Loader2 size={14} className="animate-spin" /> : <span>✓ {editId ? 'UPDATE' : 'SAVE VEHICLE'}</span>}
                             </Button>
                         </div>
                     </div>
@@ -160,9 +248,7 @@ const Vehicle = () => {
                 {/* Vehicle List Card */}
                 <Card className="lg:col-span-2 p-10 border-none shadow-snow-lg bg-white rounded-[40px] overflow-visible">
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-                        <h3 className="text-sm font-black text-slate-700 uppercase tracking-widest">
-                            Vehicle List
-                        </h3>
+                        <h3 className="text-sm font-black text-slate-700 uppercase tracking-widest">Vehicle List</h3>
                         <div className="flex items-center gap-4">
                             <div className="relative group flex-1 md:w-64">
                                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-primary transition-colors" size={14} strokeWidth={3} />
@@ -185,84 +271,76 @@ const Vehicle = () => {
                     </div>
 
                     <div className="overflow-x-auto min-h-[400px]">
-                        <table className="w-full">
-                            <thead>
-                                <tr className="bg-slate-50/50">
-                                    <th className="text-left py-5 px-6 text-[10px] font-black text-slate-400 uppercase tracking-widest first:rounded-l-2xl">
-                                        ↓ VEHICLE NO
-                                    </th>
-                                    <th className="text-left py-5 px-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                        ↓ MODEL NO
-                                    </th>
-                                    <th className="text-left py-5 px-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                        ↓ YEAR MADE
-                                    </th>
-                                    <th className="text-left py-5 px-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                        ↓ DRIVER NAME
-                                    </th>
-                                    <th className="text-left py-5 px-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                        ↓ DRIVER LICENSE
-                                    </th>
-                                    <th className="text-left py-5 px-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                        ↓ PHONE
-                                    </th>
-                                    <th className="text-right py-5 px-6 text-[10px] font-black text-slate-400 uppercase tracking-widest last:rounded-r-2xl">
-                                        ↓ ACTION
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-50">
-                                {vehicles.map((v, idx) => (
-                                    <tr key={idx} className="group hover:bg-slate-50/50 transition-colors">
-                                        <td className="py-6 px-6 font-bold text-slate-600 text-xs">{v.no}</td>
-                                        <td className="py-6 px-6 text-slate-400 text-xs">{v.model}</td>
-                                        <td className="py-6 px-6 text-slate-400 text-xs">{v.year}</td>
-                                        <td className="py-6 px-6 text-slate-400 text-xs">{v.driver}</td>
-                                        <td className="py-6 px-6 text-slate-400 text-xs">{v.license}</td>
-                                        <td className="py-6 px-6 text-slate-400 text-xs">{v.phone}</td>
-                                        <td className="py-6 px-6 text-right relative">
-                                            <div className="relative inline-block">
-                                                <button
-                                                    onClick={() => setOpenActionId(openActionId === idx ? null : idx)}
-                                                    className={`flex items-center space-x-2 bg-white border border-slate-200 rounded-full pl-6 pr-2 py-1.5 text-[10px] font-black transition-all group/btn shadow-sm active:scale-95 ${openActionId === idx ? 'text-primary border-primary ring-4 ring-primary/5' : 'text-slate-400 hover:text-primary hover:border-primary'}`}
-                                                >
-                                                    <span className="uppercase tracking-widest">SELECT</span>
-                                                    <div className={`w-6 h-6 rounded-full flex items-center justify-center transition-colors ${openActionId === idx ? 'bg-primary text-white' : 'bg-slate-50 group-hover/btn:bg-primary/5'}`}>
-                                                        <ChevronDown size={14} className={`transition-transform duration-300 ${openActionId === idx ? 'rotate-180' : ''}`} />
-                                                    </div>
-                                                </button>
-
-                                                {openActionId === idx && (
-                                                    <>
-                                                        <div className="fixed inset-0 z-10" onClick={() => setOpenActionId(null)} />
-                                                        <div className="absolute right-0 mt-2 w-48 bg-white rounded-2xl shadow-2xl border border-slate-50 py-2 z-20 animate-in zoom-in-95 duration-200 origin-top-right">
-                                                            <button className="w-full px-5 py-3 text-left text-[10px] font-black text-slate-600 hover:text-primary hover:bg-slate-50 transition-colors uppercase tracking-widest flex items-center space-x-3">
-                                                                <Edit size={14} className="text-slate-300" />
-                                                                <span>Edit</span>
-                                                            </button>
-                                                            <button className="w-full px-5 py-3 text-left text-[10px] font-black text-red-500 hover:bg-red-50 transition-colors uppercase tracking-widest flex items-center space-x-3">
-                                                                <Trash2 size={14} className="text-red-300" />
-                                                                <span>Delete</span>
-                                                            </button>
-                                                        </div>
-                                                    </>
-                                                )}
-                                            </div>
-                                        </td>
+                        {loading ? (
+                            <div className="flex items-center justify-center py-20">
+                                <Loader2 className="animate-spin text-primary" size={24} />
+                            </div>
+                        ) : (
+                            <table className="w-full">
+                                <thead>
+                                    <tr className="bg-slate-50/50">
+                                        {['↓ VEHICLE NO', '↓ TYPE', '↓ MODEL NO', '↓ YEAR MADE', '↓ DRIVER NAME', '↓ DRIVER LICENSE', '↓ PHONE', '↓ CAPACITY', '↓ ROUTE', '↓ ACTION'].map((h, i) => (
+                                            <th key={i} className={`py-5 px-6 text-[10px] font-black text-slate-400 uppercase tracking-widest ${i === 9 ? 'text-right last:rounded-r-2xl' : 'text-left first:rounded-l-2xl'}`}>{h}</th>
+                                        ))}
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody className="divide-y divide-slate-50">
+                                    {filtered.length > 0 ? filtered.map((v, idx) => (
+                                        <tr key={v._id} className="group hover:bg-slate-50/50 transition-colors">
+                                            <td className="py-6 px-6 font-bold text-slate-600 text-xs">{v.vehicleNumber}</td>
+                                            <td className="py-6 px-6 text-slate-400 text-xs">{v.type || '-'}</td>
+                                            <td className="py-6 px-6 text-slate-400 text-xs">{v.vehicleModel || '-'}</td>
+                                            <td className="py-6 px-6 text-slate-400 text-xs">{v.yearMade || '-'}</td>
+                                            <td className="py-6 px-6 text-slate-400 text-xs">{v.driverName || '-'}</td>
+                                            <td className="py-6 px-6 text-slate-400 text-xs">{v.driverLicense || '-'}</td>
+                                            <td className="py-6 px-6 text-slate-400 text-xs">{v.driverPhone || '-'}</td>
+                                            <td className="py-6 px-6 text-slate-400 text-xs">{v.capacity || '-'}</td>
+                                            <td className="py-6 px-6 text-slate-400 text-xs">{routes.find(r => r._id === v.route)?.title || '-'}</td>
+                                            <td className="py-6 px-6 text-right relative">
+                                                <div className="relative inline-block">
+                                                    <button
+                                                        onClick={() => setOpenActionId(openActionId === idx ? null : idx)}
+                                                        className={`flex items-center space-x-2 bg-white border border-slate-200 rounded-full pl-6 pr-2 py-1.5 text-[10px] font-black transition-all group/btn shadow-sm active:scale-95 ${openActionId === idx ? 'text-primary border-primary ring-4 ring-primary/5' : 'text-slate-400 hover:text-primary hover:border-primary'}`}
+                                                    >
+                                                        <span className="uppercase tracking-widest">SELECT</span>
+                                                        <div className={`w-6 h-6 rounded-full flex items-center justify-center transition-colors ${openActionId === idx ? 'bg-primary text-white' : 'bg-slate-50 group-hover/btn:bg-primary/5'}`}>
+                                                            <ChevronDown size={14} className={`transition-transform duration-300 ${openActionId === idx ? 'rotate-180' : ''}`} />
+                                                        </div>
+                                                    </button>
+                                                    {openActionId === idx && (
+                                                        <>
+                                                            <div className="fixed inset-0 z-10" onClick={() => setOpenActionId(null)} />
+                                                            <div className="absolute right-0 mt-2 w-48 bg-white rounded-2xl shadow-2xl border border-slate-50 py-2 z-20 animate-in zoom-in-95 duration-200 origin-top-right">
+                                                                <button onClick={() => handleEdit(v)} className="w-full px-5 py-3 text-left text-[10px] font-black text-slate-600 hover:text-primary hover:bg-slate-50 transition-colors uppercase tracking-widest flex items-center space-x-3">
+                                                                    <Edit size={14} className="text-slate-300" />
+                                                                    <span>Edit</span>
+                                                                </button>
+                                                                <button onClick={() => handleDelete(v._id)} className="w-full px-5 py-3 text-left text-[10px] font-black text-red-500 hover:bg-red-50 transition-colors uppercase tracking-widest flex items-center space-x-3">
+                                                                    <Trash2 size={14} className="text-red-300" />
+                                                                    <span>Delete</span>
+                                                                </button>
+                                                            </div>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    )) : (
+                                        <tr>
+                                            <td colSpan="11" className="py-20 text-center text-xs font-black text-slate-300 uppercase tracking-widest">
+                                                No Vehicles Found
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        )}
                     </div>
 
-                    {/* Pagination */}
-                    <div className="flex flex-col md:flex-row items-center justify-between gap-4 mt-10 px-4">
+                    <div className="flex items-center justify-between gap-4 mt-10 px-4">
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
-                            Showing 1 to 5 of 5 entries
+                            Total {filtered.length} entries
                         </p>
-                        <div className="flex items-center space-x-3">
-                            <div className="w-10 h-10 rounded-2xl bg-primary text-white flex items-center justify-center text-[10px] font-black shadow-lg shadow-primary/20">1</div>
-                        </div>
                     </div>
                 </Card>
             </div>

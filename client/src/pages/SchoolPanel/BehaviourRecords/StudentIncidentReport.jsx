@@ -1,15 +1,62 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button, Card } from '../../../components/SnowUI';
 import {
     Search,
     ChevronDown,
     Layout,
-    ArrowLeft
+    ArrowLeft,
+    Loader2
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import api from '../../../api/api';
 
 const StudentIncidentReport = () => {
     const navigate = useNavigate();
+    const [classes, setClasses] = useState([]);
+    const [sections, setSections] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [searching, setSearching] = useState(false);
+    const [reportData, setReportData] = useState([]);
+    const [filters, setFilters] = useState({
+        academicYear: '2026',
+        classId: '',
+        section: ''
+    });
+
+    useEffect(() => {
+        const fetchClasses = async () => {
+            setLoading(true);
+            try {
+                const { data } = await api.get('/api/academic/classes');
+                setClasses(data);
+            } catch (err) {
+                console.error('Fetch classes error:', err);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchClasses();
+    }, []);
+
+    const handleClassChange = (classId) => {
+        const selectedClass = classes.find(c => c._id === classId);
+        setSections(selectedClass?.sections || []);
+        setFilters(prev => ({ ...prev, classId, section: '' }));
+    };
+
+    const handleSearch = async () => {
+        setSearching(true);
+        try {
+            const params = { classId: filters.classId };
+            const { data } = await api.get('/api/discipline/report/by-student', { params });
+            setReportData(data);
+        } catch (err) {
+            console.error('Search error:', err);
+            alert('Failed to fetch report');
+        } finally {
+            setSearching(false);
+        }
+    };
 
     const Label = ({ children, required }) => (
         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1 italic">
@@ -42,8 +89,12 @@ const StudentIncidentReport = () => {
                     <div className="space-y-2">
                         <Label required>ACADEMIC YEAR</Label>
                         <div className="relative">
-                            <select className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3.5 text-xs font-bold text-slate-600 outline-none focus:ring-2 focus:ring-[#7c32ff]/10 focus:border-[#7c32ff] transition-all appearance-none">
-                                <option>2026(Jan-Dec)</option>
+                            <select
+                                className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3.5 text-xs font-bold text-slate-600 outline-none focus:ring-2 focus:ring-[#7c32ff]/10 focus:border-[#7c32ff] transition-all appearance-none"
+                                value={filters.academicYear}
+                                onChange={e => setFilters({ ...filters, academicYear: e.target.value })}
+                            >
+                                <option value="2026">2026(Jan-Dec)</option>
                             </select>
                             <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none" size={14} />
                         </div>
@@ -51,8 +102,14 @@ const StudentIncidentReport = () => {
                     <div className="space-y-2">
                         <Label required>CLASS</Label>
                         <div className="relative group">
-                            <select className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3.5 text-xs font-bold text-slate-600 outline-none focus:ring-2 focus:ring-[#7c32ff]/10 focus:border-[#7c32ff] transition-all appearance-none" required>
-                                <option>Select Class *</option>
+                            <select
+                                className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3.5 text-xs font-bold text-slate-600 outline-none focus:ring-2 focus:ring-[#7c32ff]/10 focus:border-[#7c32ff] transition-all appearance-none"
+                                value={filters.classId}
+                                onChange={e => handleClassChange(e.target.value)}
+                                required
+                            >
+                                <option value="">Select Class *</option>
+                                {classes.map(c => <option key={c._id} value={c._id}>{c.name}</option>)}
                             </select>
                             <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none group-focus-within:text-[#7c32ff] transition-colors" size={14} />
                         </div>
@@ -60,8 +117,14 @@ const StudentIncidentReport = () => {
                     <div className="space-y-2">
                         <Label required>SECTION</Label>
                         <div className="relative group">
-                            <select className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3.5 text-xs font-bold text-slate-600 outline-none focus:ring-2 focus:ring-[#7c32ff]/10 focus:border-[#7c32ff] transition-all appearance-none" required>
-                                <option>Select Section *</option>
+                            <select
+                                className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3.5 text-xs font-bold text-slate-600 outline-none focus:ring-2 focus:ring-[#7c32ff]/10 focus:border-[#7c32ff] transition-all appearance-none"
+                                value={filters.section}
+                                onChange={e => setFilters({ ...filters, section: e.target.value })}
+                                required
+                            >
+                                <option value="">Select Section *</option>
+                                {sections.map(s => <option key={s} value={s}>{s}</option>)}
                             </select>
                             <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none group-focus-within:text-[#7c32ff] transition-colors" size={14} />
                         </div>
@@ -69,8 +132,12 @@ const StudentIncidentReport = () => {
                 </div>
 
                 <div className="mt-10 flex justify-end">
-                    <Button className="w-full md:w-32 bg-[#7c32ff] hover:bg-[#6b25ea] text-white rounded-xl py-4 shadow-lg shadow-purple-500/20 flex items-center justify-center space-x-2 active:scale-95 transition-all text-[10px] font-black uppercase tracking-widest">
-                        <Search size={14} strokeWidth={3} />
+                    <Button
+                        onClick={handleSearch}
+                        disabled={searching || !filters.classId}
+                        className="w-full md:w-32 bg-[#7c32ff] hover:bg-[#6b25ea] text-white rounded-xl py-4 shadow-lg shadow-purple-500/20 flex items-center justify-center space-x-2 active:scale-95 transition-all text-[10px] font-black uppercase tracking-widest disabled:opacity-50"
+                    >
+                        {searching ? <Loader2 className="animate-spin" size={14} /> : <Search size={14} strokeWidth={3} />}
                         <span>SEARCH</span>
                     </Button>
                 </div>
@@ -80,6 +147,42 @@ const StudentIncidentReport = () => {
                     <Layout className="text-white" size={18} />
                 </div>
             </Card>
+
+            {/* Results Section */}
+            {(reportData.length > 0 || searching) && (
+                <Card className="p-10 border-none shadow-3xl shadow-slate-100 bg-white rounded-[32px] overflow-hidden">
+                    <div className="overflow-x-auto">
+                        <table className="w-full">
+                            <thead>
+                                <tr className="border-b border-slate-50 italic">
+                                    <th className="text-left py-5 px-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Student</th>
+                                    <th className="text-left py-5 px-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Admission No</th>
+                                    <th className="text-right py-5 px-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Incidents</th>
+                                    <th className="text-left py-5 px-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Categories</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {reportData.map((row, idx) => (
+                                    <tr key={idx} className="group hover:bg-slate-50/50 transition-all border-b border-slate-50 last:border-0">
+                                        <td className="py-5 px-6 text-[11px] font-bold text-slate-600 italic">
+                                            {row.student?.firstName} {row.student?.lastName}
+                                        </td>
+                                        <td className="py-5 px-6 text-[11px] font-bold text-slate-600 italic">
+                                            {row.student?.admissionNumber}
+                                        </td>
+                                        <td className="py-5 px-6 text-[11px] font-bold text-slate-600 tabular-nums text-right italic">
+                                            {row.totalIncidents}
+                                        </td>
+                                        <td className="py-5 px-6 text-[10px] font-bold text-slate-500 italic">
+                                            {[...new Set(row.categories)].join(', ')}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </Card>
+            )}
         </div>
     );
 };

@@ -61,15 +61,18 @@ const DormitoryRooms = () => {
 
     const [rooms, setRooms] = useState([]);
     const [dormitories, setDormitories] = useState([]);
+    const [roomTypes, setRoomTypes] = useState([]);
 
     const fetchData = async () => {
         try {
-            const [roomsRes, dormsRes] = await Promise.all([
-                api.get('/api/dormitory/room'),
-                api.get('/api/dormitory')
+            const [roomsRes, dormsRes, typesRes] = await Promise.all([
+                api.get('/api/dormitory/rooms'),
+                api.get('/api/dormitory'),
+                api.get('/api/dormitory/room-types')
             ]);
             setRooms(roomsRes.data);
             setDormitories(dormsRes.data);
+            setRoomTypes(typesRes.data);
         } catch (error) {
             console.error('Error fetching data:', error);
         }
@@ -81,7 +84,7 @@ const DormitoryRooms = () => {
 
     const handleSubmit = async () => {
         try {
-            await api.post('/api/dormitory/room', {
+            await api.post('/api/dormitory/rooms', {
                 dormitory: formData.dormitory,
                 roomNumber: formData.roomNumber,
                 type: formData.type,
@@ -107,7 +110,7 @@ const DormitoryRooms = () => {
     const handleDelete = async (id) => {
         if (!confirm('Are you sure?')) return;
         try {
-            await api.delete(`/api/dormitory/room/${id}`);
+            await api.delete(`/api/dormitory/rooms/${id}`);
             fetchData();
         } catch (error) {
             console.error('Error deleting room:', error);

@@ -1,36 +1,36 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button, Card } from '../../../components/SnowUI';
 import {
     Search,
-    Copy,
-    Download,
-    FileText,
-    Printer,
+    ChevronDown,
     Layout,
-    ChevronLeft,
-    ChevronRight,
     ArrowLeft,
-    ChevronDown
+    Loader2
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import api from '../../../api/api';
 
 const ClassSectionReport = () => {
     const navigate = useNavigate();
-    const [searchTerm, setSearchTerm] = useState('');
+    const [searching, setSearching] = useState(false);
+    const [rankings, setRankings] = useState([]);
 
-    const ActionIcon = ({ Icon }) => (
-        <button className="p-2 rounded-lg text-slate-400 hover:text-[#7c32ff] hover:bg-slate-50 transition-all border border-transparent hover:border-slate-100">
-            <Icon size={14} />
-        </button>
-    );
+    const fetchRankings = async () => {
+        setSearching(true);
+        try {
+            const { data } = await api.get('/api/discipline/report/class-section-rank');
+            setRankings(data);
+        } catch (err) {
+            console.error('Fetch rankings error:', err);
+            alert('Failed to fetch class rankings');
+        } finally {
+            setSearching(false);
+        }
+    };
 
-    const rankings = [
-        { rank: 1, class: 'Class 1', students: 25, sections: 'A-(5), B-(5), C-(5), D-(5), E-(5)', points: 0 },
-        { rank: 2, class: 'Class 2', students: 25, sections: 'A-(5), B-(5), C-(5), D-(5), E-(5)', points: 0 },
-        { rank: 3, class: 'Class 3', students: 25, sections: 'A-(5), B-(5), C-(5), D-(5), E-(5)', points: 0 },
-        { rank: 4, class: 'Class 4', students: 25, sections: 'A-(5), B-(5), C-(5), D-(5), E-(5)', points: 0 },
-        { rank: 5, class: 'Class 5', students: 25, sections: 'A-(5), B-(5), C-(5), D-(5), E-(5)', points: 0 },
-    ];
+    useEffect(() => {
+        fetchRankings();
+    }, []);
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500 pb-12">
@@ -55,80 +55,53 @@ const ClassSectionReport = () => {
                         Class Section Wise Rank Report
                     </h3>
 
-                    <div className="flex items-center space-x-6">
-                        <div className="relative group">
-                            <Search className="absolute left-0 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-[#7c32ff] transition-colors" size={16} />
-                            <input
-                                type="text"
-                                placeholder="SEARCH"
-                                className="bg-transparent border-b border-slate-100 py-2 pl-6 text-[10px] font-black uppercase tracking-widest text-slate-600 outline-none focus:border-[#7c32ff] transition-all w-48"
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                            />
-                        </div>
-
-                        <div className="flex items-center space-x-1 border border-purple-100 rounded-2xl p-1.5 bg-purple-50/30">
-                            <ActionIcon Icon={Copy} />
-                            <ActionIcon Icon={FileText} />
-                            <ActionIcon Icon={Download} />
-                            <ActionIcon Icon={Layout} />
-                            <ActionIcon Icon={Printer} />
-                            <ActionIcon Icon={Layout} />
-                        </div>
-                    </div>
+                    <Button
+                        onClick={fetchRankings}
+                        disabled={searching}
+                        className="bg-[#7c32ff] hover:bg-[#6b25ea] text-white rounded-xl px-6 py-2.5 text-[10px] font-black uppercase tracking-widest shadow-lg shadow-purple-500/20 active:scale-95 transition-all flex items-center space-x-2"
+                    >
+                        {searching ? <Loader2 size={14} className="animate-spin" /> : <Search size={14} />}
+                        <span>REFRESH</span>
+                    </Button>
                 </div>
 
                 <div className="overflow-x-auto">
                     <table className="w-full">
                         <thead>
                             <tr className="border-b border-slate-50 italic">
-                                <th className="text-left py-5 px-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                    <div className="flex items-center space-x-1"><span>↓Rank</span></div>
-                                </th>
-                                <th className="text-left py-5 px-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                    <div className="flex items-center space-x-1"><span>↓Class</span></div>
-                                </th>
-                                <th className="text-left py-5 px-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                    <div className="flex items-center space-x-1"><span>↓Students</span></div>
-                                </th>
-                                <th className="text-left py-5 px-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                    <div className="flex items-center space-x-1"><span>↓Section-(Students)</span></div>
-                                </th>
-                                <th className="text-left py-5 px-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                    <div className="flex items-center space-x-1"><span>↓Total Points</span></div>
-                                </th>
-                                <th className="text-right py-5 px-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                    <div className="flex items-center space-x-1 justify-end"><span>↓Actions</span></div>
-                                </th>
+                                <th className="text-left py-5 px-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Rank</th>
+                                <th className="text-left py-5 px-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Class</th>
+                                <th className="text-left py-5 px-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Students Involved</th>
+                                <th className="text-left py-5 px-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Incidents</th>
+                                <th className="text-left py-5 px-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Sections</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {rankings.map((row, idx) => (
-                                <tr key={idx} className="group hover:bg-slate-50/50 transition-all border-b border-slate-50 last:border-0">
-                                    <td className="py-5 px-6 text-[11px] font-bold text-slate-600 tabular-nums italic">{row.rank}</td>
-                                    <td className="py-5 px-6 text-[11px] font-bold text-slate-600 italic">{row.class}</td>
-                                    <td className="py-5 px-6 text-[11px] font-bold text-slate-600 tabular-nums italic">{row.students}</td>
-                                    <td className="py-5 px-6 text-[11px] font-bold text-slate-600 italic tracking-tight">{row.sections}</td>
-                                    <td className="py-5 px-6 text-[11px] font-bold text-slate-600 tabular-nums italic">{row.points}</td>
-                                    <td className="py-5 px-6 text-right">
-                                        <button className="bg-white hover:bg-[#7c32ff] text-slate-400 hover:text-white border border-slate-200 hover:border-[#7c32ff] rounded-full px-5 py-2 text-[10px] font-black uppercase tracking-widest transition-all flex items-center space-x-2 ml-auto shadow-sm active:scale-95">
-                                            <span>SELECT</span>
-                                            <ChevronDown size={14} strokeWidth={3} />
-                                        </button>
+                            {searching ? (
+                                <tr>
+                                    <td colSpan="5" className="py-20 text-center">
+                                        <Loader2 className="animate-spin text-[#7c32ff] mx-auto" size={24} />
                                     </td>
                                 </tr>
-                            ))}
+                            ) : rankings.length > 0 ? rankings.map((row, idx) => (
+                                <tr key={idx} className="group hover:bg-slate-50/50 transition-all border-b border-slate-50 last:border-0">
+                                    <td className="py-5 px-6 text-[11px] font-bold text-slate-400 tabular-nums italic">#{idx + 1}</td>
+                                    <td className="py-5 px-6 text-[11px] font-bold text-slate-600 italic">{row.class?.name}</td>
+                                    <td className="py-5 px-6 text-[11px] font-bold text-slate-600 tabular-nums italic">{row.totalStudents}</td>
+                                    <td className="py-5 px-6 text-[11px] font-bold text-slate-600 tabular-nums italic">{row.totalIncidents}</td>
+                                    <td className="py-5 px-6 text-[11px] font-bold text-slate-500 italic">
+                                        {row.class?.sections?.join(', ')}
+                                    </td>
+                                </tr>
+                            )) : (
+                                <tr>
+                                    <td colSpan="5" className="py-20 text-center text-[10px] font-bold text-slate-300 uppercase tracking-widest italic">
+                                        No Data Available
+                                    </td>
+                                </tr>
+                            )}
                         </tbody>
                     </table>
-                </div>
-
-                <div className="mt-10 flex justify-between items-center text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                    <span>Showing 1 to 5 of 5 entries</span>
-                    <div className="flex items-center space-x-2">
-                        <button className="p-2.5 rounded-xl border border-slate-100 text-slate-300 hover:text-[#7c32ff] transition-all"><ChevronLeft size={16} /></button>
-                        <div className="w-8 h-8 rounded-lg bg-[#7c32ff] text-white flex items-center justify-center italic">1</div>
-                        <button className="p-2.5 rounded-xl border border-slate-100 text-slate-300 hover:text-[#7c32ff] transition-all"><ChevronRight size={16} /></button>
-                    </div>
                 </div>
 
                 {/* Basket Icon decorator */}

@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { ChevronDown, Search } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ChevronDown, Check, Loader2 } from 'lucide-react';
 import { Card, Button } from '../../../components/SnowUI';
+import api from '../../../api/api';
 
 const Select = ({ label, name, value, onChange, options, placeholder, required }) => (
     <div className="space-y-2 group">
@@ -27,7 +28,7 @@ const Select = ({ label, name, value, onChange, options, placeholder, required }
 );
 
 const Input = ({ label, name, value, onChange, placeholder, required, type = "text" }) => (
-    <div className="space-y-2">
+    <div className="space-y-2 group">
         {label && (
             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
                 {label} {required && <span className="text-red-500">*</span>}
@@ -45,23 +46,52 @@ const Input = ({ label, name, value, onChange, placeholder, required, type = "te
 );
 
 const AddBook = () => {
+    const [saving, setSaving] = useState(false);
+    const [categories, setCategories] = useState([]);
     const [formData, setFormData] = useState({
-        bookTitle: '',
+        title: '',
+        isbn: '',
+        author: '',
         category: '',
         subject: '',
-        bookNo: '',
-        isbnNo: '',
-        publisherName: '',
-        authorName: '',
-        rackNumber: '',
-        quantity: '',
-        bookPrice: '',
+        shelf: '',
+        publisher: '',
+        publishDate: '',
+        copies: '',
+        price: '',
         description: ''
     });
 
-    const handleChange = (e) => {
+    useEffect(() => {
+        api.get('/api/library/categories')
+            .then(({ data }) => setCategories(Array.isArray(data) ? data : []))
+            .catch(err => console.error('Fetch categories error:', err));
+    }, []);
+
+    const handleInputChange = (e) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        if (!formData.title) {
+            alert('Book title is required');
+            return;
+        }
+        setSaving(true);
+        try {
+            await api.post('/api/library/books', formData);
+            alert('Book saved successfully!');
+            setFormData({
+                title: '', isbn: '', author: '', category: '', subject: '',
+                shelf: '', publisher: '', publishDate: '', copies: '', price: '', description: ''
+            });
+        } catch (err) {
+            alert(err?.response?.data?.message || 'Failed to save book');
+        } finally {
+            setSaving(false);
+        }
     };
 
     return (
@@ -80,113 +110,50 @@ const AddBook = () => {
                 </div>
             </div>
 
-            {/* Form Card */}
             <div className="px-4">
                 <Card className="p-10 border-none shadow-snow-lg bg-white rounded-[40px]">
-                    <h3 className="text-sm font-black text-slate-700 uppercase tracking-widest mb-10">
-                        Add Book
-                    </h3>
-
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-                        <Input
-                            label="BOOK TITLE"
-                            name="bookTitle"
-                            value={formData.bookTitle}
-                            onChange={handleChange}
-                            placeholder="Book Title"
-                            required
-                        />
-                        <Select
-                            label="BOOK CATEGORIES"
-                            name="category"
-                            value={formData.category}
-                            onChange={handleChange}
-                            placeholder="Select Book Category"
-                            options={['Fiction', 'Science', 'History']}
-                            required
-                        />
-                        <Select
-                            label="SUBJECT"
-                            name="subject"
-                            value={formData.subject}
-                            onChange={handleChange}
-                            placeholder="Select Subjects"
-                            options={['Physics', 'Chemistry', 'Mathematics']}
-                            required
-                        />
-                        <Input
-                            label="BOOK NO"
-                            name="bookNo"
-                            value={formData.bookNo}
-                            onChange={handleChange}
-                            placeholder="Book No"
-                        />
-
-                        <Input
-                            label="ISBN NO"
-                            name="isbnNo"
-                            value={formData.isbnNo}
-                            onChange={handleChange}
-                            placeholder="ISBN No"
-                        />
-                        <Input
-                            label="PUBLISHER NAME"
-                            name="publisherName"
-                            value={formData.publisherName}
-                            onChange={handleChange}
-                            placeholder="Publisher Name"
-                        />
-                        <Input
-                            label="AUTHOR NAME"
-                            name="authorName"
-                            value={formData.authorName}
-                            onChange={handleChange}
-                            placeholder="Author Name"
-                        />
-                        <Input
-                            label="RACK NUMBER"
-                            name="rackNumber"
-                            value={formData.rackNumber}
-                            onChange={handleChange}
-                            placeholder="Rack Number"
-                        />
-
-                        <Input
-                            label="QUANTITY"
-                            name="quantity"
-                            value={formData.quantity}
-                            onChange={handleChange}
-                            placeholder="Quantity"
-                            type="number"
-                        />
-                        <Input
-                            label="BOOK PRICE"
-                            name="bookPrice"
-                            value={formData.bookPrice}
-                            onChange={handleChange}
-                            placeholder="Book Price"
-                            type="number"
-                        />
-                    </div>
-
-                    <div className="mt-10 space-y-4">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
-                            DESCRIPTION
-                        </label>
-                        <textarea
-                            name="description"
-                            value={formData.description}
-                            onChange={handleChange}
-                            className="w-full h-32 p-6 bg-white border border-slate-200 rounded-3xl outline-none text-xs font-medium text-slate-600 focus:ring-2 focus:ring-primary/10 focus:border-primary transition-all shadow-sm placeholder:text-slate-300 resize-none"
-                            placeholder="Write description here..."
-                        ></textarea>
-                    </div>
-
-                    <div className="flex justify-center mt-12">
-                        <Button className="bg-[#7c32ff] hover:bg-[#6b25ea] text-white rounded-2xl px-12 py-5 text-[10px] font-black uppercase tracking-widest flex items-center space-x-2 shadow-2xl shadow-purple-500/30 active:scale-95 transition-all">
-                            <span>✓ SAVE BOOK</span>
-                        </Button>
-                    </div>
+                    <h3 className="text-sm font-black text-slate-700 uppercase tracking-widest mb-8">Book Information</h3>
+                    <form onSubmit={handleSubmit}>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <Input label="BOOK TITLE" name="title" value={formData.title} onChange={handleInputChange} placeholder="Book Title *" required />
+                            <Input label="ISBN" name="isbn" value={formData.isbn} onChange={handleInputChange} placeholder="ISBN No." />
+                            <Input label="AUTHOR" name="author" value={formData.author} onChange={handleInputChange} placeholder="Author Name" />
+                            <Select
+                                label="CATEGORY"
+                                name="category"
+                                value={formData.category}
+                                onChange={handleInputChange}
+                                placeholder="Select Category"
+                                options={categories.map(c => ({ value: c, label: c }))}
+                            />
+                            <Input label="SUBJECT" name="subject" value={formData.subject} onChange={handleInputChange} placeholder="Subject" />
+                            <Input label="SHELF" name="shelf" value={formData.shelf} onChange={handleInputChange} placeholder="Shelf No." />
+                            <Input label="PUBLISHER" name="publisher" value={formData.publisher} onChange={handleInputChange} placeholder="Publisher" />
+                            <Input label="PUBLISH DATE" name="publishDate" value={formData.publishDate} onChange={handleInputChange} placeholder="Publish Date" type="date" />
+                            <Input label="COPIES" name="copies" value={formData.copies} onChange={handleInputChange} placeholder="Number of Copies" type="number" />
+                            <Input label="PRICE" name="price" value={formData.price} onChange={handleInputChange} placeholder="Price" type="number" />
+                        </div>
+                        <div className="mt-6 space-y-2 group">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">DESCRIPTION</label>
+                            <textarea
+                                name="description"
+                                value={formData.description}
+                                onChange={handleInputChange}
+                                placeholder="Description"
+                                className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-xs font-medium text-slate-600 outline-none focus:ring-2 focus:ring-primary/10 focus:border-primary transition-all shadow-sm placeholder:text-slate-300 min-h-[100px] resize-none"
+                            />
+                        </div>
+                        <div className="flex justify-center pt-8">
+                            <Button
+                                type="submit"
+                                disabled={saving}
+                                className="bg-[#7c32ff] hover:bg-[#6b25ea] text-white rounded-2xl px-16 py-4 text-[10px] font-black uppercase tracking-widest flex items-center space-x-2 shadow-2xl shadow-purple-500/30 active:scale-95 transition-all disabled:opacity-50"
+                            >
+                                {saving ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} strokeWidth={3} />}
+                                <span>SAVE BOOK</span>
+                            </Button>
+                        </div>
+                    </form>
                 </Card>
             </div>
         </div>

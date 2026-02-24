@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     Search, Download, Printer, FileText, LayoutGrid, ChevronDown, Edit, Trash2, UserPlus
 } from 'lucide-react';
 import { Card, Button } from '../../../components/SnowUI';
+import api from '../../../api/api';
 
 const Select = ({ label, name, value, onChange, options, placeholder, required }) => (
     <div className="space-y-2 group">
@@ -49,10 +50,153 @@ const Input = ({ label, name, value, onChange, placeholder, required, type = "te
 const AddMember = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [memberType, setMemberType] = useState('');
+    const [selectedClass, setSelectedClass] = useState('');
+    const [selectedSection, setSelectedSection] = useState('');
+    const [selectedMember, setSelectedMember] = useState(null);
     const [memberId, setMemberId] = useState('');
-    const [openActionId, setOpenActionId] = useState(null);
 
-    const [members] = useState([]); // Empty state as per Photo 4
+    const [classes, setClasses] = useState([]);
+    const [sections, setSections] = useState([]);
+    const [students, setStudents] = useState([]);
+    const [staffList, setStaffList] = useState([]);
+    const [members, setMembers] = useState([]);
+
+    const [openActionId, setOpenActionId] = useState(null);
+    const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        fetchMembers();
+        fetchClasses();
+    }, []);
+
+    useEffect(() => {
+        if (memberType === 'Student') {
+            setStaffList([]);
+        } else if (memberType === 'Teacher' || memberType === 'Staff') {
+            setStudents([]);
+            setSelectedClass('');
+            setSelectedSection('');
+            fetchStaff(memberType);
+        }
+    }, [memberType]);
+
+    useEffect(() => {
+        if (selectedClass && selectedSection) {
+            fetchStudents();
+        }
+    }, [selectedClass, selectedSection]);
+
+    const fetchClasses = async () => {
+        try {
+            const res = await api.get('/api/academic/classes');
+            setClasses(res.data);
+        } catch (error) {
+            console.error('Failed to fetch classes');
+        }
+    };
+
+    const fetchStudents = async () => {
+        try {
+            const res = await api.get(`/api/students?classId=${selectedClass}&section=${selectedSection}`);
+            setStudents(res.data);
+        } catch (error) {
+            console.error('Failed to fetch students');
+        }
+    };
+
+    const fetchStaff = async (role) => {
+        try {
+            const res = await api.get(`/api/staff?role=${role}`);
+            setStaffList(res.data);
+        } catch (error) {
+            console.error('Failed to fetch staff');
+        }
+    };
+
+    const fetchMembers = async (search = '') => {
+        setLoading(true);
+        try {
+            const res = await api.get(`/api/library/members?search=${search}`);
+            setMembers(res.data);
+        } catch (error) {
+            console.error('Failed to fetch members');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleClassChange = (e) => {
+        const classId = e.target.value;
+        setSelectedClass(classId);
+        const cls = classes.find(c => c._id === classId);
+        setSections(cls ? cls.sections : []);
+        setSelectedSection('');
+        setStudents([]);
+        setSelectedMember(null);
+        setMemberId('');
+    };
+
+    const handleMemberSelect = (e) => {
+        const id = e.target.value;
+        if (memberType === 'Student') {
+            const student = students.find(s => s._id === id);
+            setSelectedMember(student);
+            setMemberId(student?.admissionNumber || '');
+        } else {
+            const staff = staffList.find(s => s._id === id);
+            setSelectedMember(staff);
+            setMemberId(staff?.staffId || '');
+        }
+    };
+
+    const handleSubmit = async () => {
+        if (!memberType || !selectedMember || !memberId) {
+            alert('Please fill all required fields');
+            return;
+        }
+
+        try {
+            const payload = {
+                type: memberType,
+                memberId: memberId,
+                name: memberType === 'Student' ? `${selectedMember.firstName} ${selectedMember.lastName}` : selectedMember.name,
+                email: selectedMember.email,
+                mobile: memberType === 'Student' ? selectedMember.phone : selectedMember.contactNo,
+                student: memberType === 'Student' ? selectedMember._id : undefined,
+                staff: memberType !== 'Student' ? selectedMember._id : undefined
+            };
+
+            await api.post('/api/library/members', payload);
+            alert('Member added successfully');
+            setMemberType('');
+            setSelectedClass('');
+            setSelectedSection('');
+            setSelectedMember(null);
+            setMemberId('');
+            fetchMembers();
+        } catch (error) {
+            alert(error.response?.data?.message || 'Failed to add member');
+        }
+    };
+
+    const handleDelete = async (id) => {
+        if (window.confirm('Are you sure you want to remove this member?')) {
+            try {
+                await api.delete(`/api/library/members/${id}`);
+                fetchMembers();
+            } catch (error) {
+                alert('Failed to delete member');
+            }
+        }
+    };
+
+    const handleSearch = (e) => {
+        const val = e.target.value;
+        setSearchTerm(val);
+        if (val.length > 2 || val === '') {
+            fetchMembers(val);
+        }
+    };
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500 pb-20">
@@ -86,6 +230,47 @@ const AddMember = () => {
                             options={['Student', 'Teacher', 'Staff']}
                             required
                         />
+
+                        {memberType === 'Student' && (
+                            <>
+                                <Select
+                                    label="CLASS"
+                                    value={selectedClass}
+                                    onChange={handleClassChange}
+                                    placeholder="Select Class *"
+                                    options={classes.map(c => ({ value: c._id, label: c.name }))}
+                                    required
+                                />
+                                <Select
+                                    label="SECTION"
+                                    value={selectedSection}
+                                    onChange={(e) => setSelectedSection(e.target.value)}
+                                    placeholder="Select Section *"
+                                    options={sections.map(s => ({ value: s, label: s }))}
+                                    required
+                                />
+                                <Select
+                                    label="STUDENT"
+                                    value={selectedMember?._id || ''}
+                                    onChange={handleMemberSelect}
+                                    placeholder="Select Student *"
+                                    options={students.map(s => ({ value: s._id, label: `${s.firstName} ${s.lastName}` }))}
+                                    required
+                                />
+                            </>
+                        )}
+
+                        {(memberType === 'Teacher' || memberType === 'Staff') && (
+                            <Select
+                                label="NAME"
+                                value={selectedMember?._id || ''}
+                                onChange={handleMemberSelect}
+                                placeholder="Select Member *"
+                                options={staffList.map(s => ({ value: s._id, label: s.name }))}
+                                required
+                            />
+                        )}
+
                         <Input
                             label="MEMBER ID"
                             name="memberId"
@@ -95,7 +280,10 @@ const AddMember = () => {
                             required
                         />
                         <div className="flex justify-center pt-4">
-                            <Button className="bg-[#7c32ff] hover:bg-[#6b25ea] text-white rounded-2xl px-10 py-4 text-[10px] font-black uppercase tracking-widest flex items-center space-x-2 shadow-2xl shadow-purple-500/30 active:scale-95 transition-all">
+                            <Button
+                                onClick={handleSubmit}
+                                className="bg-[#7c32ff] hover:bg-[#6b25ea] text-white rounded-2xl px-10 py-4 text-[10px] font-black uppercase tracking-widest flex items-center space-x-2 shadow-2xl shadow-purple-500/30 active:scale-95 transition-all"
+                            >
                                 <span>✓ SAVE MEMBER</span>
                             </Button>
                         </div>
@@ -115,7 +303,7 @@ const AddMember = () => {
                                     type="text"
                                     placeholder="SEARCH"
                                     value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    onChange={handleSearch}
                                     className="w-full bg-slate-50 border-none rounded-2xl pl-11 pr-4 py-3 text-[10px] font-black tracking-widest text-slate-600 focus:ring-2 focus:ring-primary/10 outline-none transition-all placeholder:text-slate-300"
                                 />
                             </div>
@@ -197,7 +385,10 @@ const AddMember = () => {
                                                                 <Edit size={14} className="text-slate-300" />
                                                                 <span>Edit</span>
                                                             </button>
-                                                            <button className="w-full px-5 py-3 text-left text-[10px] font-black text-red-500 hover:bg-red-50 transition-colors uppercase tracking-widest flex items-center space-x-3">
+                                                            <button
+                                                                onClick={() => handleDelete(member._id)}
+                                                                className="w-full px-5 py-3 text-left text-[10px] font-black text-red-500 hover:bg-red-50 transition-colors uppercase tracking-widest flex items-center space-x-3"
+                                                            >
                                                                 <Trash2 size={14} className="text-red-300" />
                                                                 <span>Delete</span>
                                                             </button>
@@ -220,7 +411,7 @@ const AddMember = () => {
 
                     <div className="flex flex-col md:flex-row items-center justify-between gap-4 mt-10 px-4">
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
-                            showing 0 to 0 of 0 entries
+                            showing {members.length > 0 ? 1 : 0} to {members.length} of {members.length} entries
                         </p>
                         <div className="flex items-center space-x-3">
                             <button className="flex items-center justify-center w-8 h-8 rounded-xl bg-white border border-slate-100 text-slate-400 transition-all opacity-50" disabled>

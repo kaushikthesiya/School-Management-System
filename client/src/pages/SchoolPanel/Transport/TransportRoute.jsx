@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-    Search, Download, Printer, FileText, LayoutGrid, ChevronDown, Edit, Trash2
+    Search, Download, Printer, FileText, LayoutGrid, ChevronDown, Edit, Trash2, Loader2
 } from 'lucide-react';
 import { Card, Button } from '../../../components/SnowUI';
+import api from '../../../api/api';
 
 const Input = ({ label, name, value, onChange, placeholder, required, type = "text" }) => (
     <div className="space-y-2 group">
@@ -25,28 +26,77 @@ const Input = ({ label, name, value, onChange, placeholder, required, type = "te
 const TransportRoute = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [openActionId, setOpenActionId] = useState(null);
-    const [formData, setFormData] = useState({
-        routeTitle: '',
-        fare: ''
-    });
+    const [routes, setRoutes] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [saving, setSaving] = useState(false);
+    const [editId, setEditId] = useState(null);
+    const [formData, setFormData] = useState({ routeTitle: '', fare: '' });
 
-    const [routes] = useState([
-        { title: 'provident', fare: '141.00' },
-        { title: 'pariatur', fare: '267.00' },
-        { title: 'qui', fare: '294.00' },
-        { title: 'dolorum', fare: '269.00' },
-        { title: 'omnis', fare: '315.00' },
-        { title: 'beatae', fare: '210.00' },
-        { title: 'consectetur', fare: '243.00' },
-        { title: 'minus', fare: '270.00' },
-        { title: 'voluptate', fare: '274.00' },
-        { title: 'accusamus', fare: '354.00' },
-    ]);
+    const fetchRoutes = async () => {
+        setLoading(true);
+        try {
+            const { data } = await api.get('/api/transport/routes');
+            setRoutes(data);
+        } catch (err) {
+            console.error('Fetch transport routes error:', err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => { fetchRoutes(); }, []);
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
     };
+
+    const resetForm = () => {
+        setFormData({ routeTitle: '', fare: '' });
+        setEditId(null);
+    };
+
+    const handleSubmit = async () => {
+        if (!formData.routeTitle || !formData.fare) {
+            alert('Route Title and Fare are required');
+            return;
+        }
+        setSaving(true);
+        try {
+            if (editId) {
+                await api.put(`/api/transport/routes/${editId}`, { title: formData.routeTitle, fare: formData.fare });
+            } else {
+                await api.post('/api/transport/routes', { title: formData.routeTitle, fare: formData.fare });
+            }
+            resetForm();
+            fetchRoutes();
+        } catch (err) {
+            alert(err?.response?.data?.message || 'Failed to save route');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleEdit = (r) => {
+        setEditId(r._id);
+        setFormData({ routeTitle: r.title || '', fare: r.fare || '' });
+        setOpenActionId(null);
+    };
+
+    const handleDelete = async (id) => {
+        if (!window.confirm('Are you sure you want to delete this route?')) return;
+        try {
+            await api.delete(`/api/transport/routes/${id}`);
+            fetchRoutes();
+        } catch (err) {
+            alert('Failed to delete route');
+        }
+        setOpenActionId(null);
+    };
+
+    const filtered = routes.filter(r =>
+        (r.title || '').toLowerCase().includes(searchTerm.toLowerCase())
+    );
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500 pb-20">
@@ -65,31 +115,26 @@ const TransportRoute = () => {
             </div>
 
             <div className="px-4 grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Add Route Card */}
+                {/* Add/Edit Route Card */}
                 <Card className="p-10 border-none shadow-snow-lg bg-white rounded-[40px] h-fit">
                     <h3 className="text-sm font-black text-slate-700 uppercase tracking-widest mb-8">
-                        Add Route
+                        {editId ? 'Edit Route' : 'Add Route'}
                     </h3>
                     <div className="space-y-6">
-                        <Input
-                            label="ROUTE TITLE"
-                            name="routeTitle"
-                            value={formData.routeTitle}
-                            onChange={handleInputChange}
-                            placeholder="Route Title *"
-                            required
-                        />
-                        <Input
-                            label="FARE"
-                            name="fare"
-                            value={formData.fare}
-                            onChange={handleInputChange}
-                            placeholder="Fare *"
-                            required
-                        />
-                        <div className="flex justify-center pt-6">
-                            <Button className="bg-[#7c32ff] hover:bg-[#6b25ea] text-white rounded-2xl px-12 py-4 text-[10px] font-black uppercase tracking-widest flex items-center space-x-2 shadow-2xl shadow-purple-500/30 active:scale-95 transition-all w-full">
-                                <span>✓ SAVE ROUTE</span>
+                        <Input label="ROUTE TITLE" name="routeTitle" value={formData.routeTitle} onChange={handleInputChange} placeholder="Route Title *" required />
+                        <Input label="FARE" name="fare" value={formData.fare} onChange={handleInputChange} placeholder="Fare *" required />
+                        <div className="flex gap-3 pt-4">
+                            {editId && (
+                                <button onClick={resetForm} className="flex-1 border border-slate-200 rounded-2xl py-4 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:bg-slate-50 transition-all">
+                                    CANCEL
+                                </button>
+                            )}
+                            <Button
+                                onClick={handleSubmit}
+                                disabled={saving}
+                                className="flex-1 bg-[#7c32ff] hover:bg-[#6b25ea] text-white rounded-2xl py-4 text-[10px] font-black uppercase tracking-widest flex items-center justify-center space-x-2 shadow-2xl shadow-purple-500/30 active:scale-95 transition-all disabled:opacity-50"
+                            >
+                                {saving ? <Loader2 size={14} className="animate-spin" /> : <span>✓ {editId ? 'UPDATE' : 'SAVE ROUTE'}</span>}
                             </Button>
                         </div>
                     </div>
@@ -98,9 +143,7 @@ const TransportRoute = () => {
                 {/* Route List Card */}
                 <Card className="lg:col-span-2 p-10 border-none shadow-snow-lg bg-white rounded-[40px] overflow-visible">
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-                        <h3 className="text-sm font-black text-slate-700 uppercase tracking-widest">
-                            Route List
-                        </h3>
+                        <h3 className="text-sm font-black text-slate-700 uppercase tracking-widest">Route List</h3>
                         <div className="flex items-center gap-4">
                             <div className="relative group flex-1 md:w-64">
                                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-primary transition-colors" size={14} strokeWidth={3} />
@@ -123,72 +166,71 @@ const TransportRoute = () => {
                     </div>
 
                     <div className="overflow-x-auto min-h-[400px]">
-                        <table className="w-full">
-                            <thead>
-                                <tr className="bg-slate-50/50">
-                                    <th className="text-left py-5 px-6 text-[10px] font-black text-slate-400 uppercase tracking-widest first:rounded-l-2xl">
-                                        ↓ SL
-                                    </th>
-                                    <th className="text-left py-5 px-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                        ↓ ROUTE TITLE
-                                    </th>
-                                    <th className="text-left py-5 px-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                        ↓ FARE ($)
-                                    </th>
-                                    <th className="text-right py-5 px-6 text-[10px] font-black text-slate-400 uppercase tracking-widest last:rounded-r-2xl">
-                                        ↓ ACTION
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-50">
-                                {routes.map((r, idx) => (
-                                    <tr key={idx} className="group hover:bg-slate-50/50 transition-colors">
-                                        <td className="py-6 px-6 font-bold text-slate-600 text-xs">{idx + 1}</td>
-                                        <td className="py-6 px-6 text-slate-400 text-xs">{r.title}</td>
-                                        <td className="py-6 px-6 text-slate-400 text-xs">{r.fare}</td>
-                                        <td className="py-6 px-6 text-right relative">
-                                            <div className="relative inline-block">
-                                                <button
-                                                    onClick={() => setOpenActionId(openActionId === idx ? null : idx)}
-                                                    className={`flex items-center space-x-2 bg-white border border-slate-200 rounded-full pl-6 pr-2 py-1.5 text-[10px] font-black transition-all group/btn shadow-sm active:scale-95 ${openActionId === idx ? 'text-primary border-primary ring-4 ring-primary/5' : 'text-slate-400 hover:text-primary hover:border-primary'}`}
-                                                >
-                                                    <span className="uppercase tracking-widest">SELECT</span>
-                                                    <div className={`w-6 h-6 rounded-full flex items-center justify-center transition-colors ${openActionId === idx ? 'bg-primary text-white' : 'bg-slate-50 group-hover/btn:bg-primary/5'}`}>
-                                                        <ChevronDown size={14} className={`transition-transform duration-300 ${openActionId === idx ? 'rotate-180' : ''}`} />
-                                                    </div>
-                                                </button>
-
-                                                {openActionId === idx && (
-                                                    <>
-                                                        <div className="fixed inset-0 z-10" onClick={() => setOpenActionId(null)} />
-                                                        <div className="absolute right-0 mt-2 w-48 bg-white rounded-2xl shadow-2xl border border-slate-50 py-2 z-20 animate-in zoom-in-95 duration-200 origin-top-right">
-                                                            <button className="w-full px-5 py-3 text-left text-[10px] font-black text-slate-600 hover:text-primary hover:bg-slate-50 transition-colors uppercase tracking-widest flex items-center space-x-3">
-                                                                <Edit size={14} className="text-slate-300" />
-                                                                <span>Edit</span>
-                                                            </button>
-                                                            <button className="w-full px-5 py-3 text-left text-[10px] font-black text-red-500 hover:bg-red-50 transition-colors uppercase tracking-widest flex items-center space-x-3">
-                                                                <Trash2 size={14} className="text-red-300" />
-                                                                <span>Delete</span>
-                                                            </button>
-                                                        </div>
-                                                    </>
-                                                )}
-                                            </div>
-                                        </td>
+                        {loading ? (
+                            <div className="flex items-center justify-center py-20">
+                                <Loader2 className="animate-spin text-primary" size={24} />
+                            </div>
+                        ) : (
+                            <table className="w-full">
+                                <thead>
+                                    <tr className="bg-slate-50/50">
+                                        <th className="text-left py-5 px-6 text-[10px] font-black text-slate-400 uppercase tracking-widest first:rounded-l-2xl">↓ SL</th>
+                                        <th className="text-left py-5 px-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">↓ ROUTE TITLE</th>
+                                        <th className="text-left py-5 px-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">↓ FARE ($)</th>
+                                        <th className="text-right py-5 px-6 text-[10px] font-black text-slate-400 uppercase tracking-widest last:rounded-r-2xl">↓ ACTION</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody className="divide-y divide-slate-50">
+                                    {filtered.length > 0 ? filtered.map((r, idx) => (
+                                        <tr key={r._id} className="group hover:bg-slate-50/50 transition-colors">
+                                            <td className="py-6 px-6 font-bold text-slate-600 text-xs">{idx + 1}</td>
+                                            <td className="py-6 px-6 text-slate-400 text-xs">{r.title}</td>
+                                            <td className="py-6 px-6 text-slate-400 text-xs">{r.fare}</td>
+                                            <td className="py-6 px-6 text-right relative">
+                                                <div className="relative inline-block">
+                                                    <button
+                                                        onClick={() => setOpenActionId(openActionId === idx ? null : idx)}
+                                                        className={`flex items-center space-x-2 bg-white border border-slate-200 rounded-full pl-6 pr-2 py-1.5 text-[10px] font-black transition-all group/btn shadow-sm active:scale-95 ${openActionId === idx ? 'text-primary border-primary ring-4 ring-primary/5' : 'text-slate-400 hover:text-primary hover:border-primary'}`}
+                                                    >
+                                                        <span className="uppercase tracking-widest">SELECT</span>
+                                                        <div className={`w-6 h-6 rounded-full flex items-center justify-center transition-colors ${openActionId === idx ? 'bg-primary text-white' : 'bg-slate-50 group-hover/btn:bg-primary/5'}`}>
+                                                            <ChevronDown size={14} className={`transition-transform duration-300 ${openActionId === idx ? 'rotate-180' : ''}`} />
+                                                        </div>
+                                                    </button>
+                                                    {openActionId === idx && (
+                                                        <>
+                                                            <div className="fixed inset-0 z-10" onClick={() => setOpenActionId(null)} />
+                                                            <div className="absolute right-0 mt-2 w-48 bg-white rounded-2xl shadow-2xl border border-slate-50 py-2 z-20 animate-in zoom-in-95 duration-200 origin-top-right">
+                                                                <button onClick={() => handleEdit(r)} className="w-full px-5 py-3 text-left text-[10px] font-black text-slate-600 hover:text-primary hover:bg-slate-50 transition-colors uppercase tracking-widest flex items-center space-x-3">
+                                                                    <Edit size={14} className="text-slate-300" />
+                                                                    <span>Edit</span>
+                                                                </button>
+                                                                <button onClick={() => handleDelete(r._id)} className="w-full px-5 py-3 text-left text-[10px] font-black text-red-500 hover:bg-red-50 transition-colors uppercase tracking-widest flex items-center space-x-3">
+                                                                    <Trash2 size={14} className="text-red-300" />
+                                                                    <span>Delete</span>
+                                                                </button>
+                                                            </div>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    )) : (
+                                        <tr>
+                                            <td colSpan="4" className="py-20 text-center text-xs font-black text-slate-300 uppercase tracking-widest">
+                                                No Routes Found
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        )}
                     </div>
 
-                    {/* Pagination */}
-                    <div className="flex flex-col md:flex-row items-center justify-between gap-4 mt-10 px-4">
+                    <div className="flex items-center justify-between gap-4 mt-10 px-4">
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
-                            Showing 1 to 10 of 10 entries
+                            Total {filtered.length} entries
                         </p>
-                        <div className="flex items-center space-x-3">
-                            <div className="w-10 h-10 rounded-2xl bg-primary text-white flex items-center justify-center text-[10px] font-black shadow-lg shadow-primary/20">1</div>
-                        </div>
                     </div>
                 </Card>
             </div>
