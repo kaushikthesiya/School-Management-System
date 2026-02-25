@@ -3,6 +3,7 @@ import axios from 'axios';
 const api = axios.create({
     // Use environmental variable for production, fallback to localhost for development
     baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3000',
+    timeout: 30000, // 30 seconds
 });
 
 // Add a request interceptor to include the auth token and school slug
