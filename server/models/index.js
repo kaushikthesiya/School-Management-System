@@ -62,7 +62,13 @@ const tenantModelDefinitions = {
     RoomType: require('./RoomType'),
     Vehicle: require('./Vehicle'),
     SmsSettings: require('./SmsSettings'),
-    MultiClassStudent: require('./MultiClassStudent')
+    MultiClassStudent: require('./MultiClassStudent'),
+    BulkPrintSetting: require('./BulkPrintSetting'),
+    InventoryCategory: require('./InventoryCategory'),
+    Item: require('./Item'),
+    ItemStore: require('./ItemStore'),
+    Supplier: require('./Supplier'),
+    InventoryTransaction: require('./InventoryTransaction')
 };
 
 /**

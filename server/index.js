@@ -47,6 +47,8 @@ app.use('/api/teacher-evaluation', require('./middleware/tenantMiddleware'), req
 app.use('/api/staff-attendance', require('./middleware/tenantMiddleware'), require('./routes/staffAttendanceRoutes'));
 app.use('/api/payroll', require('./middleware/tenantMiddleware'), require('./routes/payrollRoutes'));
 app.use('/api/staff-settings', require('./middleware/tenantMiddleware'), require('./routes/staffSettingsRoutes'));
+app.use('/api/bulk-print', require('./middleware/tenantMiddleware'), require('./routes/bulkPrintRoutes'));
+app.use('/api/inventory', require('./middleware/tenantMiddleware'), require('./routes/inventoryRoutes'));
 app.use('/api/upload', require('./routes/uploadRoutes'));
 
 // Serve Uploads Static Folder

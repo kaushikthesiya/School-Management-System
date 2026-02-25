@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, Button, Input, Select } from '../../../../components/SnowUI';
 import {
     Search, Copy, FileSpreadsheet, Download, Printer,
     FileText, ChevronDown, CheckCircle2, User, Clock
 } from 'lucide-react';
+import api from '../../../../api/api';
 
 const LeaveDefine = () => {
     const [formData, setFormData] = useState({
@@ -11,8 +12,47 @@ const LeaveDefine = () => {
         leaveType: '',
         days: ''
     });
+    const [leaveDefines, setLeaveDefines] = useState([]);
+    const [roles, setRoles] = useState([]);
+    const [leaveTypes, setLeaveTypes] = useState([]);
+    const [loading, setLoading] = useState(false);
 
-    const leaveDefines = [];
+    const fetchData = async () => {
+        try {
+            const roleRes = await api.get('/api/roles');
+            const typeRes = await api.get('/api/admin-section/leave-types');
+            setRoles(roleRes.data);
+            setLeaveTypes(typeRes.data);
+            // Fetch existing leave defines if endpoint exists
+            // const defineRes = await api.get('/api/leaves/define');
+            // setLeaveDefines(defineRes.data);
+        } catch (error) {
+            console.error('Error fetching data:', error);
+        }
+    };
+
+    useEffect(() => {
+        fetchData();
+    }, []);
+
+    const handleSubmit = async () => {
+        if (!formData.role || !formData.leaveType || !formData.days) {
+            alert('Please fill all required fields');
+            return;
+        }
+        setLoading(true);
+        try {
+            await api.post('/api/leaves/define', formData);
+            alert('Leave definition saved successfully');
+            setFormData({ role: '', leaveType: '', days: '' });
+            fetchData();
+        } catch (error) {
+            console.error('Error saving leave definition:', error);
+            alert('Failed to save leave definition');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     return (
         <div className="space-y-8 animate-in fade-in duration-500 pb-12 text-slate-800">
@@ -39,9 +79,7 @@ const LeaveDefine = () => {
                                 label="Role *"
                                 options={[
                                     { value: '', label: 'Select Role *' },
-                                    { value: 'admin', label: 'Admin' },
-                                    { value: 'teacher', label: 'Teacher' },
-                                    { value: 'staff', label: 'Staff' },
+                                    ...roles.map(r => ({ value: r._id, label: r.name }))
                                 ]}
                                 value={formData.role}
                                 onChange={(val) => setFormData({ ...formData, role: val })}
@@ -52,8 +90,7 @@ const LeaveDefine = () => {
                                 label="Leave Type *"
                                 options={[
                                     { value: '', label: 'Select Leave Type *' },
-                                    { value: 'casual', label: 'Casual Leave' },
-                                    { value: 'sick', label: 'Sick Leave' },
+                                    ...leaveTypes.map(t => ({ value: t.name, label: t.name }))
                                 ]}
                                 value={formData.leaveType}
                                 onChange={(val) => setFormData({ ...formData, leaveType: val })}
@@ -69,9 +106,13 @@ const LeaveDefine = () => {
                                 className="font-bold"
                             />
 
-                            <Button className="w-full uppercase text-[10px] tracking-[0.2em] py-4 bg-primary hover:bg-primary-hover shadow-lg shadow-primary/20 mt-4 font-black">
+                            <Button
+                                onClick={handleSubmit}
+                                disabled={loading}
+                                className="w-full uppercase text-[10px] tracking-[0.2em] py-4 bg-primary hover:bg-primary-hover shadow-lg shadow-primary/20 mt-4 font-black"
+                            >
                                 <CheckCircle2 size={16} />
-                                <span>Save</span>
+                                <span>{loading ? 'Saving...' : 'Save'}</span>
                             </Button>
                         </div>
                     </Card>

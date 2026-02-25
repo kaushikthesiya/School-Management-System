@@ -5,26 +5,33 @@ import { Save, Settings } from 'lucide-react';
 
 const FeesInvoiceBulkPrintSettings = () => {
     const [settings, setSettings] = useState({
-        invoiceType: 'invoice'
+        feesInvoiceType: 'invoice'
     });
     const [loading, setLoading] = useState(false);
 
-    // Mock fetch settings
     useEffect(() => {
-        // In real app: const res = await api.get('/api/fees/settings');
-        // setSettings(res.data);
+        const fetchSettings = async () => {
+            try {
+                const res = await api.get('/api/bulk-print/settings');
+                if (res.data) {
+                    setSettings(res.data);
+                }
+            } catch (error) {
+                console.error('Error fetching settings:', error);
+            }
+        };
+        fetchSettings();
     }, []);
 
     const handleSave = async () => {
         setLoading(true);
         try {
-            // await api.patch('/api/fees/settings', settings);
-            setTimeout(() => {
-                alert('Settings updated successfully');
-                setLoading(false);
-            }, 800);
+            await api.patch('/api/bulk-print/settings', settings);
+            alert('Settings updated successfully');
+            setLoading(false);
         } catch (error) {
             console.error('Error saving settings:', error);
+            alert('Failed to update settings');
             setLoading(false);
         }
     };
@@ -58,30 +65,30 @@ const FeesInvoiceBulkPrintSettings = () => {
 
                         <div className="flex items-center gap-12 flex-1 justify-center">
                             <label className="flex items-center space-x-3 cursor-pointer group">
-                                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${settings.invoiceType === 'invoice' ? 'border-[#7c32ff] bg-[#7c32ff]' : 'border-slate-300'}`}>
-                                    {settings.invoiceType === 'invoice' && <div className="w-2 h-2 bg-white rounded-full"></div>}
+                                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${settings.feesInvoiceType === 'invoice' ? 'border-[#7c32ff] bg-[#7c32ff]' : 'border-slate-300'}`}>
+                                    {settings.feesInvoiceType === 'invoice' && <div className="w-2 h-2 bg-white rounded-full"></div>}
                                 </div>
-                                <span className={`text-sm font-bold uppercase ${settings.invoiceType === 'invoice' ? 'text-[#7c32ff]' : 'text-slate-500'} group-hover:text-[#7c32ff] transition-colors`}>invoice</span>
+                                <span className={`text-sm font-bold uppercase ${settings.feesInvoiceType === 'invoice' ? 'text-[#7c32ff]' : 'text-slate-500'} group-hover:text-[#7c32ff] transition-colors`}>invoice</span>
                                 <input
                                     type="radio"
-                                    name="invoiceType"
+                                    name="feesInvoiceType"
                                     className="hidden"
-                                    checked={settings.invoiceType === 'invoice'}
-                                    onChange={() => setSettings({ ...settings, invoiceType: 'invoice' })}
+                                    checked={settings.feesInvoiceType === 'invoice'}
+                                    onChange={() => setSettings({ ...settings, feesInvoiceType: 'invoice' })}
                                 />
                             </label>
 
                             <label className="flex items-center space-x-3 cursor-pointer group">
-                                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${settings.invoiceType === 'slip' ? 'border-[#7c32ff] bg-[#7c32ff]' : 'border-slate-300'}`}>
-                                    {settings.invoiceType === 'slip' && <div className="w-2 h-2 bg-white rounded-full"></div>}
+                                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${settings.feesInvoiceType === 'slip' ? 'border-[#7c32ff] bg-[#7c32ff]' : 'border-slate-300'}`}>
+                                    {settings.feesInvoiceType === 'slip' && <div className="w-2 h-2 bg-white rounded-full"></div>}
                                 </div>
-                                <span className={`text-sm font-bold uppercase ${settings.invoiceType === 'slip' ? 'text-[#7c32ff]' : 'text-slate-500'} group-hover:text-[#7c32ff] transition-colors`}>slip</span>
+                                <span className={`text-sm font-bold uppercase ${settings.feesInvoiceType === 'slip' ? 'text-[#7c32ff]' : 'text-slate-500'} group-hover:text-[#7c32ff] transition-colors`}>slip</span>
                                 <input
                                     type="radio"
-                                    name="invoiceType"
+                                    name="feesInvoiceType"
                                     className="hidden"
-                                    checked={settings.invoiceType === 'slip'}
-                                    onChange={() => setSettings({ ...settings, invoiceType: 'slip' })}
+                                    checked={settings.feesInvoiceType === 'slip'}
+                                    onChange={() => setSettings({ ...settings, feesInvoiceType: 'slip' })}
                                 />
                             </label>
                         </div>

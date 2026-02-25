@@ -301,9 +301,7 @@ const StudentList = () => {
                                                 <div ref={dropdownRef} className="absolute right-0 mt-2 w-48 bg-white border border-slate-100 rounded-2xl shadow-2xl z-[100] py-2 animate-in fade-in zoom-in-95 duration-200">
                                                     <button
                                                         onClick={() => {
-                                                            setSelectedStudent(student);
-                                                            setAssignData({ class: student.class?._id || '', section: student.section || '' });
-                                                            setShowAssignModal(true);
+                                                            navigate(`/${school_slug}/student-assign-class/${student._id}`);
                                                             setOpenDropdownId(null);
                                                         }}
                                                         className="w-full px-4 py-2.5 text-left text-[11px] font-bold text-slate-600 hover:bg-slate-50 flex items-center space-x-3 transition-colors"

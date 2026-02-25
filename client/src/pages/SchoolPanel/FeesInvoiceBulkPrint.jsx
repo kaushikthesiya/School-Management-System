@@ -18,12 +18,16 @@ const FeesInvoiceBulkPrint = () => {
 
     const [activeFilters, setActiveFilters] = useState(null);
 
+    const [sections, setSections] = useState([]);
+
     const fetchData = async () => {
         try {
             const classRes = await api.get('/api/academic/classes');
             setClasses(classRes.data);
+            const sectionRes = await api.get('/api/academic/sections');
+            setSections(sectionRes.data);
         } catch (error) {
-            console.error('Error fetching classes:', error);
+            console.error('Error fetching classes/sections:', error);
         }
     };
 
@@ -31,23 +35,59 @@ const FeesInvoiceBulkPrint = () => {
         fetchData();
     }, []);
 
-    // Fetch students when filters change (simplified for demo)
+    // Fetch students when filters change
     useEffect(() => {
-        if (filters.class && filters.section) {
-            // In real app: fetch students by class/section
-            setStudents([]);
-        }
+        const fetchStudents = async () => {
+            if (filters.class && filters.section) {
+                try {
+                    const res = await api.get('/api/admin-section/students/search', {
+                        params: { classId: filters.class, section: filters.section }
+                    });
+                    setStudents(res.data);
+                } catch (error) {
+                    console.error('Error fetching students:', error);
+                }
+            }
+        };
+        fetchStudents();
     }, [filters.class, filters.section]);
 
     const handleSearch = async () => {
         setLoading(true);
         setActiveFilters(filters);
-
-        // Fetch real data here
-        setTimeout(() => {
-            setInvoices([]);
+        try {
+            const res = await api.get('/api/fees/records', {
+                params: {
+                    classId: filters.class,
+                    studentId: filters.student
+                }
+            });
+            // Format for the table
+            const formattedInvoices = res.data.map(item => ({
+                _id: item._id,
+                studentName: `${item.student.firstName} ${item.student.lastName}`,
+                class: item.class.name,
+                section: filters.section || 'A', // Fallback if section info is missing in record
+                invoiceNo: item.invoiceNumber || `INV-${item._id.substring(item._id.length - 6).toUpperCase()}`,
+                amount: item.amount,
+                status: item.status
+            }));
+            setInvoices(formattedInvoices);
+        } catch (error) {
+            console.error('Error searching invoices:', error);
+            alert('Failed to fetch fee records');
+        } finally {
             setLoading(false);
-        }, 800);
+        }
+    };
+
+    const handlePrintAll = () => {
+        if (invoices.length === 0) return;
+        window.print();
+    };
+
+    const handlePrintSingle = (id) => {
+        window.print();
     };
 
     return (
@@ -97,7 +137,7 @@ const FeesInvoiceBulkPrint = () => {
                                 onChange={(e) => setFilters({ ...filters, section: e.target.value })}
                             >
                                 <option value="">Select Section *</option>
-                                {['A', 'B', 'C', 'D'].map(s => <option key={s} value={s}>{s}</option>)}
+                                {sections.map(s => <option key={s._id} value={s.name}>{s.name}</option>)}
                             </select>
                             <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none group-hover:text-[#7c32ff] transition-colors" size={16} />
                         </div>
@@ -111,7 +151,7 @@ const FeesInvoiceBulkPrint = () => {
                                 onChange={(e) => setFilters({ ...filters, student: e.target.value })}
                             >
                                 <option value="">Select Student *</option>
-                                {students.map(s => <option key={s._id} value={s._id}>{s.name}</option>)}
+                                {students.map(s => <option key={s._id} value={s._id}>{s.firstName} {s.lastName}</option>)}
                             </select>
                             <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none group-hover:text-[#7c32ff] transition-colors" size={16} />
                         </div>
@@ -121,10 +161,11 @@ const FeesInvoiceBulkPrint = () => {
                 <div className="flex justify-end mt-10 pr-10">
                     <Button
                         onClick={handleSearch}
+                        disabled={loading}
                         className="!bg-[#7c32ff] !rounded-lg flex items-center space-x-2 px-8 py-3 shadow-lg shadow-purple-500/20 active:scale-95 transition-all"
                     >
                         <Printer size={18} />
-                        <span className="uppercase text-[11px] font-black tracking-widest">PRINT</span>
+                        <span className="uppercase text-[11px] font-black tracking-widest">{loading ? 'SEARCHING...' : 'PRINT'}</span>
                     </Button>
                 </div>
             </Card>
@@ -134,7 +175,9 @@ const FeesInvoiceBulkPrint = () => {
                 <Card className="p-6 border-none shadow-snow-lg rounded-[20px] bg-white overflow-hidden min-h-[400px]">
                     <div className="mb-6 flex justify-between items-center">
                         <h2 className="text-lg font-bold text-[#3E4D67]">Fees Invoice List</h2>
-                        <button className="flex items-center space-x-2 bg-slate-800 text-white px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-slate-700 transition-all">
+                        <button
+                            onClick={handlePrintAll}
+                            className="flex items-center space-x-2 bg-slate-800 text-white px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-slate-700 transition-all">
                             <Printer size={14} />
                             <span>Print All</span>
                         </button>
@@ -176,7 +219,9 @@ const FeesInvoiceBulkPrint = () => {
                                                 </span>
                                             </td>
                                             <td className="px-4 py-3 text-right">
-                                                <button className="text-[#7c32ff] hover:text-[#6a25e6] transition-colors p-2 rounded-lg hover:bg-purple-50">
+                                                <button
+                                                    onClick={() => handlePrintSingle(item._id)}
+                                                    className="text-[#7c32ff] hover:text-[#6a25e6] transition-colors p-2 rounded-lg hover:bg-purple-50">
                                                     <Printer size={16} />
                                                 </button>
                                             </td>

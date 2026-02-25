@@ -489,6 +489,21 @@ const Layout = ({ children, role = 'school' }) => {
                             { name: 'Fund Transfer', path: `${prefix}/accounts/fund-transfer`, subPermission: 'Fund Transfer' },
                         ].filter(s => hasPermission('accounts', s.subPermission))
                     },
+                    {
+                        name: 'Inventory',
+                        icon: <Box size={20} />,
+                        permission: 'inventory',
+                        subItems: [
+                            { name: 'Item Category', path: `${prefix}/inventory-category`, subPermission: 'Item Category' },
+                            { name: 'Item List', path: `${prefix}/inventory-list`, subPermission: 'Item List' },
+                            { name: 'Item Store', path: `${prefix}/inventory-store`, subPermission: 'Item Store' },
+                            { name: 'Supplier', path: `${prefix}/inventory-supplier`, subPermission: 'Supplier' },
+                            { name: 'Item Receive', path: `${prefix}/inventory-receive`, subPermission: 'Item Receive' },
+                            { name: 'Item Receive List', path: `${prefix}/inventory-receive-list`, subPermission: 'Item Receive List' },
+                            { name: 'Item Sell', path: `${prefix}/inventory-sell-list`, subPermission: 'Item Sell' },
+                            { name: 'Item Issue', path: `${prefix}/issue-inventory`, subPermission: 'Issue Item' },
+                        ].filter(s => hasPermission('inventory', s.subPermission))
+                    },
                 ].filter(i => hasPermission(i.permission))
             },
             {

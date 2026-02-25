@@ -24,22 +24,66 @@ router.post('/apply', protect, async (req, res) => {
     }
 });
 
-// @desc    Get all leaves (for admin approval)
+// @desc    Get all leaves (with optional filters)
 // @route   GET /api/leaves
-router.get('/', protect, authorize('schooladmin'), async (req, res) => {
+router.get('/', protect, async (req, res) => {
     try {
-        const { Leave } = req.tenantModels;
-        const leaves = await Leave.find({ school: req.school._id }).sort({ appliedDate: -1 });
-        res.json(leaves);
+        const { Leave, Staff, Student } = req.tenantModels;
+        const query = { school: req.school._id };
+
+        if (req.query.status) query.status = req.query.status;
+        if (req.query.applicantId) query.applicantId = req.query.applicantId;
+
+        const leaves = await Leave.find(query).sort({ appliedDate: -1 });
+
+        // Manual population for applicantId since it can be Staff or Student
+        const populatedLeaves = await Promise.all(leaves.map(async (leave) => {
+            let applicant = null;
+            if (leave.applicantType === 'Staff') {
+                applicant = await Staff.findById(leave.applicantId).select('name staffId');
+            } else {
+                applicant = await Student.findById(leave.applicantId).select('name roll');
+            }
+            return { ...leave.toObject(), applicantId: applicant };
+        }));
+
+        res.json(populatedLeaves);
     } catch (error) {
         console.error('Get Leaves Error:', error);
         res.status(500).json({ message: 'Server Error' });
     }
 });
 
+// @desc    Get leave requests (alias for GET /api/leaves with specific view)
+// @route   GET /api/leaves/requests
+router.get('/requests', protect, authorize('schooladmin'), async (req, res) => {
+    try {
+        const { Leave, Staff, Student } = req.tenantModels;
+        const query = { school: req.school._id };
+        if (req.query.status) query.status = req.query.status;
+
+        const leaves = await Leave.find(query).sort({ appliedDate: -1 });
+
+        const populatedLeaves = await Promise.all(leaves.map(async (leave) => {
+            let applicant = null;
+            if (leave.applicantType === 'Staff') {
+                applicant = await Staff.findById(leave.applicantId).select('name staffId');
+            } else {
+                applicant = await Student.findById(leave.applicantId).select('name roll');
+            }
+            return { ...leave.toObject(), applicantId: applicant };
+        }));
+
+        res.json(populatedLeaves);
+    } catch (error) {
+        console.error('Get Leave Requests Error:', error);
+        res.status(500).json({ message: 'Server Error' });
+    }
+});
+
 // @desc    Approve/Reject leave
-// @route   PATCH /api/leaves/:id/status
-router.patch('/:id/status', protect, authorize('schooladmin'), async (req, res) => {
+// @route   PATCH /api/leaves/requests/:id/status
+router.patch('/requests/:id/status', protect, authorize('schooladmin'), async (req, res) => {
     const { status } = req.body;
     try {
         const { Leave } = req.tenantModels;

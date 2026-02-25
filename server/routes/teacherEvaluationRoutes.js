@@ -24,20 +24,40 @@ router.post('/', protect, async (req, res) => {
 router.get('/', protect, authorize('schooladmin'), async (req, res) => {
     try {
         const { TeacherEvaluation } = req.tenantModels;
-        const { status, teacher } = req.query;
+        const { status, teacher, classId, sectionId, subjectId, submittedBy } = req.query;
         let query = { school: req.school._id };
+
+        console.log('--- Evaluation Fetch Debug ---');
+        console.log('Incoming Params:', req.query);
 
         if (status) query.status = status;
         if (teacher) query.teacher = teacher;
+        if (classId) query.class = classId;
+        if (sectionId) query.section = sectionId;
+        if (subjectId) query.subject = subjectId;
 
-        const evaluations = await TeacherEvaluation.find(query)
-            .populate('teacher', 'name')
+        // If submittedBy is NOT a role, apply it to query directly
+        if (submittedBy && !['student', 'parent'].includes(submittedBy)) {
+            query.submittedBy = submittedBy;
+        }
+
+        console.log('Final Mongo Query:', JSON.stringify(query));
+
+        let evaluations = await TeacherEvaluation.find(query)
+            .populate('teacher', 'name staffId')
             .populate('class', 'name')
             .populate('section', 'name')
             .populate('subject', 'name')
-            .populate('submittedBy', 'name') // If available in User model
+            .populate('submittedBy', 'name role') // Populate role for filtering
             .sort({ createdAt: -1 });
 
+        // Apply role-based filtering if requested
+        if (submittedBy && ['student', 'parent'].includes(submittedBy)) {
+            console.log(`Filtering results by role: ${submittedBy}`);
+            evaluations = evaluations.filter(e => e.submittedBy && e.submittedBy.role === submittedBy);
+        }
+
+        console.log('Evaluations Found after filtering:', evaluations.length);
         res.json(evaluations);
     } catch (error) {
         console.error('Get Evaluations Error:', error);

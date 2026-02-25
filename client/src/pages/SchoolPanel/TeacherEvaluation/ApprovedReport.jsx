@@ -20,11 +20,47 @@ const ApprovedReport = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [evaluations, setEvaluations] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [classes, setClasses] = useState([]);
+    const [sections, setSections] = useState([]);
+    const [subjects, setSubjects] = useState([]);
+    const [teachers, setTeachers] = useState([]);
+    const [filters, setFilters] = useState({
+        class: '',
+        subject: '',
+        section: '',
+        teacher: '',
+        submittedBy: ''
+    });
+
+    const fetchOptions = async () => {
+        try {
+            const [classRes, sectionRes, subjectRes, staffRes] = await Promise.all([
+                api.get('/api/academic/classes'),
+                api.get('/api/academic/sections'),
+                api.get('/api/academic/subjects'),
+                api.get('/api/staff?role=Teacher')
+            ]);
+            setClasses(classRes.data);
+            setSections(sectionRes.data);
+            setSubjects(subjectRes.data);
+            setTeachers(staffRes.data);
+        } catch (error) {
+            console.error('Error fetching filter options:', error);
+        }
+    };
 
     const fetchEvaluations = async () => {
         setLoading(true);
         try {
-            const { data } = await api.get('/api/teacher-evaluation?status=Approved');
+            const params = {
+                status: 'Approved',
+                classId: filters.class,
+                subjectId: filters.subject,
+                sectionId: filters.section,
+                teacher: filters.teacher,
+                submittedBy: filters.submittedBy
+            };
+            const { data } = await api.get('/api/teacher-evaluation', { params });
             setEvaluations(data);
         } catch (error) {
             console.error('Error fetching evaluations:', error);
@@ -34,6 +70,7 @@ const ApprovedReport = () => {
     };
 
     useEffect(() => {
+        fetchOptions();
         fetchEvaluations();
     }, []);
 
@@ -69,21 +106,70 @@ const ApprovedReport = () => {
             <Card className="p-8 border-none shadow-3xl shadow-slate-100 bg-white rounded-[32px] overflow-hidden relative">
                 <h3 className="text-sm font-black text-slate-700 uppercase tracking-widest mb-8 italic">Teacher Approved Evaluation Report</h3>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                    {/* ... (Filters can stay static for now or be removed if unused. Leaving them as UI placeholders is fine for this task) ... */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-6 mb-8 pr-10">
                     <div className="space-y-2">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block ml-1 italic">CLASS</label>
-                        <select className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-4 text-xs font-bold text-slate-600 outline-none focus:ring-2 focus:ring-[#7c32ff]/10 focus:border-[#7c32ff] transition-all appearance-none italic">
-                            <option value="">Select Class</option>
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block ml-1 italic">CLASS *</label>
+                        <select
+                            value={filters.class}
+                            onChange={(e) => setFilters({ ...filters, class: e.target.value })}
+                            className="w-full bg-white border-b-2 border-slate-100 py-3 px-1 text-[11px] font-bold text-slate-600 outline-none focus:border-[#7c32ff] transition-all appearance-none cursor-pointer italic"
+                        >
+                            <option value="">Select Class *</option>
+                            {classes.map(c => <option key={c._id} value={c._id}>{c.name}</option>)}
                         </select>
                     </div>
-                    {/* ... (Truncating filters for brevity in thought, but will include in actual call if replacing large chunk) ... */}
-                    <div className="flex items-end justify-end">
-                        <Button onClick={fetchEvaluations} className="bg-[#1C1C1C] hover:bg-black text-white rounded-xl px-8 py-3 text-[10px] font-black uppercase tracking-[0.2em] shadow-lg shadow-purple-500/20 transition-all flex items-center space-x-2">
-                            <SearchIcon size={14} strokeWidth={3} />
-                            <span>REFRESH</span>
-                        </Button>
+                    <div className="space-y-2">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block ml-1 italic">SUBJECT</label>
+                        <select
+                            value={filters.subject}
+                            onChange={(e) => setFilters({ ...filters, subject: e.target.value })}
+                            className="w-full bg-white border-b-2 border-slate-100 py-3 px-1 text-[11px] font-bold text-slate-600 outline-none focus:border-[#7c32ff] transition-all appearance-none cursor-pointer italic"
+                        >
+                            <option value="">Select Subject</option>
+                            {subjects.map(s => <option key={s._id} value={s._id}>{s.name}</option>)}
+                        </select>
                     </div>
+                    <div className="space-y-2">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block ml-1 italic">SECTION</label>
+                        <select
+                            value={filters.section}
+                            onChange={(e) => setFilters({ ...filters, section: e.target.value })}
+                            className="w-full bg-white border-b-2 border-slate-100 py-3 px-1 text-[11px] font-bold text-slate-600 outline-none focus:border-[#7c32ff] transition-all appearance-none cursor-pointer italic"
+                        >
+                            <option value="">Select</option>
+                            {sections.map(s => <option key={s._id} value={s._id}>{s.name}</option>)}
+                        </select>
+                    </div>
+                    <div className="space-y-2">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block ml-1 italic">TEACHER</label>
+                        <select
+                            value={filters.teacher}
+                            onChange={(e) => setFilters({ ...filters, teacher: e.target.value })}
+                            className="w-full bg-white border-b-2 border-slate-100 py-3 px-1 text-[11px] font-bold text-slate-600 outline-none focus:border-[#7c32ff] transition-all appearance-none cursor-pointer italic"
+                        >
+                            <option value="">Select Teacher</option>
+                            {teachers.map(t => <option key={t._id} value={t._id}>{t.name}</option>)}
+                        </select>
+                    </div>
+                    <div className="space-y-2">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block ml-1 italic">SUBMITTED BY</label>
+                        <select
+                            value={filters.submittedBy}
+                            onChange={(e) => setFilters({ ...filters, submittedBy: e.target.value })}
+                            className="w-full bg-white border-b-2 border-slate-100 py-3 px-1 text-[11px] font-bold text-slate-600 outline-none focus:border-[#7c32ff] transition-all appearance-none cursor-pointer italic"
+                        >
+                            <option value="">Select Submitted By</option>
+                            <option value="student">Student</option>
+                            <option value="parent">Parent</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div className="flex justify-end pr-10 -mt-4">
+                    <Button onClick={fetchEvaluations} className="!bg-[#7c32ff] !rounded-lg flex items-center space-x-2 px-8 py-3 shadow-lg shadow-purple-500/20 active:scale-95 transition-all">
+                        <SearchIcon size={14} strokeWidth={3} />
+                        <span className="uppercase text-[11px] font-black tracking-widest">SEARCH</span>
+                    </Button>
                 </div>
             </Card>
 
@@ -117,16 +203,19 @@ const ApprovedReport = () => {
                             <thead>
                                 <tr className="border-b border-slate-50 italic text-slate-400">
                                     <th className="text-left py-5 px-4 text-[9px] font-black uppercase tracking-widest whitespace-nowrap">
-                                        <div className="flex items-center space-x-1"><span>↓Teacher</span></div>
+                                        <div className="flex items-center space-x-1"><span>↓Staff Id</span></div>
+                                    </th>
+                                    <th className="text-left py-5 px-4 text-[9px] font-black uppercase tracking-widest whitespace-nowrap">
+                                        <div className="flex items-center space-x-1"><span>↓Teacher Name</span></div>
                                     </th>
                                     <th className="text-left py-5 px-4 text-[9px] font-black uppercase tracking-widest whitespace-nowrap">
                                         <div className="flex items-center space-x-1"><span>↓Submitted By</span></div>
                                     </th>
                                     <th className="text-left py-5 px-4 text-[9px] font-black uppercase tracking-widest whitespace-nowrap">
-                                        <div className="flex items-center space-x-1"><span>↓Class</span></div>
+                                        <div className="flex items-center space-x-1"><span>↓Class (Section)</span></div>
                                     </th>
                                     <th className="text-left py-5 px-4 text-[9px] font-black uppercase tracking-widest whitespace-nowrap">
-                                        <div className="flex items-center space-x-1"><span>↓Generic Rating</span></div>
+                                        <div className="flex items-center space-x-1"><span>↓Rating</span></div>
                                     </th>
                                     <th className="text-left py-5 px-4 text-[9px] font-black uppercase tracking-widest whitespace-nowrap">
                                         <div className="flex items-center space-x-1"><span>↓Comment</span></div>
@@ -140,7 +229,8 @@ const ApprovedReport = () => {
                                 {evaluations.length > 0 ? (
                                     evaluations.map((evaluate) => (
                                         <tr key={evaluate._id} className="hover:bg-slate-50/50 transition-all border-b border-slate-50">
-                                            <td className="py-4 px-4 text-xs font-bold text-slate-600">{evaluate.teacher?.name || 'N/A'}</td>
+                                            <td className="py-4 px-4 text-xs font-bold text-slate-400">{evaluate.teacher?.staffId || 'N/A'}</td>
+                                            <td className="py-4 px-4 text-xs font-bold text-slate-700">{evaluate.teacher?.name || 'N/A'}</td>
                                             <td className="py-4 px-4 text-xs font-bold text-slate-600">{evaluate.submittedBy?.name || 'N/A'}</td>
                                             <td className="py-4 px-4 text-xs font-bold text-slate-600">{evaluate.class?.name || 'N/A'} ({evaluate.section?.name || 'N/A'})</td>
                                             <td className="py-4 px-4 text-xs font-bold text-slate-600">{evaluate.rating} / 5</td>

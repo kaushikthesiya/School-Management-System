@@ -117,6 +117,7 @@ import StudentList from './pages/SchoolPanel/StudentList';
 import StudentAttendance from './pages/SchoolPanel/StudentAttendance';
 import SiblingManagement from './pages/SchoolPanel/SiblingManagement';
 import StudentTransfer from './pages/SchoolPanel/StudentTransfer';
+import AssignClass from './pages/SchoolPanel/AssignClass';
 import CertificateBulkPrint from './pages/SchoolPanel/CertificateBulkPrint';
 import IDCardBulkPrint from './pages/SchoolPanel/IDCardBulkPrint';
 import {
@@ -185,6 +186,12 @@ import ItemCategory from './pages/SchoolPanel/Inventory/ItemCategory';
 import ItemList from './pages/SchoolPanel/Inventory/ItemList';
 import AddItem from './pages/SchoolPanel/Inventory/AddItem';
 import IssueItem from './pages/SchoolPanel/Inventory/IssueItem';
+import ItemStore from './pages/SchoolPanel/Inventory/ItemStore';
+import Supplier from './pages/SchoolPanel/Inventory/Supplier';
+import ItemReceive from './pages/SchoolPanel/Inventory/ItemReceive';
+import ItemReceiveList from './pages/SchoolPanel/Inventory/ItemReceiveList';
+import ItemSell from './pages/SchoolPanel/Inventory/ItemSell';
+import ItemSellList from './pages/SchoolPanel/Inventory/ItemSellList';
 import StaffDetails from './pages/SchoolPanel/HumanResource/StaffDetails';
 import {
   StudentAttendanceReport as StudentAttendanceReportView,
@@ -365,6 +372,7 @@ function App() {
                     <Route path="student-settings" element={<StudentSettings />} />
                     <Route path="sibling-management" element={<SiblingManagement />} />
                     <Route path="student-transfer" element={<StudentTransfer />} />
+                    <Route path="student-assign-class/:id" element={<AssignClass />} />
                     <Route path="incidents" element={<Incidents />} />
                     <Route path="assign-incident" element={<AssignIncident />} />
                     <Route path="student-incident-report" element={<StudentIncidentReport />} />
@@ -518,6 +526,12 @@ function App() {
                     <Route path="inventory-list" element={<ItemList />} />
                     <Route path="add-inventory" element={<AddItem />} />
                     <Route path="issue-inventory" element={<IssueItem />} />
+                    <Route path="inventory-store" element={<ItemStore />} />
+                    <Route path="inventory-supplier" element={<Supplier />} />
+                    <Route path="inventory-receive" element={<ItemReceive />} />
+                    <Route path="inventory-receive-list" element={<ItemReceiveList />} />
+                    <Route path="inventory-sell" element={<ItemSell />} />
+                    <Route path="inventory-sell-list" element={<ItemSellList />} />
                     <Route path="chat" element={<Chat />} />
                     <Route path="style" element={<Style />} />
                     <Route path="user-logs" element={<UserLogs />} />

@@ -1,12 +1,29 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card } from '../../../../components/SnowUI';
 import {
     Search, Copy, FileSpreadsheet, Download, Printer,
-    FileText, ChevronDown, Clock
+    FileText, ChevronDown, Clock, MoreHorizontal
 } from 'lucide-react';
+import api from '../../../../api/api';
 
 const PendingLeaveRequest = () => {
-    const pendingRequests = [];
+    const [pendingRequests, setPendingRequests] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    const fetchPendingRequests = async () => {
+        try {
+            const { data } = await api.get('/api/leaves/requests?status=Pending');
+            setPendingRequests(data);
+        } catch (error) {
+            console.error('Error fetching pending requests:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchPendingRequests();
+    }, []);
 
     return (
         <div className="space-y-8 animate-in fade-in duration-500 pb-12 text-slate-800">
@@ -90,16 +107,39 @@ const PendingLeaveRequest = () => {
                             </tr>
                         </thead>
                         <tbody>
-                            <tr>
-                                <td colSpan="8" className="py-24 text-center">
-                                    <div className="flex flex-col items-center justify-center space-y-4 opacity-40">
-                                        <div className="w-16 h-16 bg-snow-100 rounded-3xl flex items-center justify-center text-secondary">
-                                            <Clock size={28} />
+                            {pendingRequests.length > 0 ? (
+                                pendingRequests.map((req, idx) => (
+                                    <tr key={req._id} className="border-b border-snow-50 hover:bg-snow-50/50 transition-colors">
+                                        <td className="py-4 px-4 text-xs font-bold text-navy-700">{idx + 1}</td>
+                                        <td className="py-4 px-4 text-xs font-bold text-navy-700">{req.applicantId?.name || 'N/A'}</td>
+                                        <td className="py-4 px-4 text-xs font-medium text-secondary capitalize">{req.leaveType}</td>
+                                        <td className="py-4 px-4 text-xs font-medium text-secondary">{new Date(req.startDate).toLocaleDateString()}</td>
+                                        <td className="py-4 px-4 text-xs font-medium text-secondary">{new Date(req.endDate).toLocaleDateString()}</td>
+                                        <td className="py-4 px-4 text-xs font-medium text-secondary">{new Date(req.createdAt).toLocaleDateString()}</td>
+                                        <td className="py-4 px-4 text-center">
+                                            <span className="px-2 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-100 text-amber-600">
+                                                {req.status}
+                                            </span>
+                                        </td>
+                                        <td className="py-4 px-4 text-center">
+                                            <button className="text-secondary hover:text-primary transition-colors">
+                                                <MoreHorizontal size={16} />
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))
+                            ) : (
+                                <tr>
+                                    <td colSpan="8" className="py-24 text-center">
+                                        <div className="flex flex-col items-center justify-center space-y-4 opacity-40">
+                                            <div className="w-16 h-16 bg-snow-100 rounded-3xl flex items-center justify-center text-secondary text-center">
+                                                <Clock size={28} />
+                                            </div>
+                                            <p className="text-[10px] font-black uppercase tracking-widest text-secondary">{loading ? 'Loading...' : 'No Data Available In Table'}</p>
                                         </div>
-                                        <p className="text-[10px] font-black uppercase tracking-widest text-secondary">No Data Available In Table</p>
-                                    </div>
-                                </td>
-                            </tr>
+                                    </td>
+                                </tr>
+                            )}
                         </tbody>
                     </table>
                 </div>

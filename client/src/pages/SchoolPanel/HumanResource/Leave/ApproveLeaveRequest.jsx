@@ -1,14 +1,40 @@
-import React from 'react';
-import { Card, Badge } from '../../../../components/SnowUI';
+import React, { useState, useEffect } from 'react';
+import { Card, Badge, Button } from '../../../../components/SnowUI';
 import {
     Search, Copy, FileSpreadsheet, Download, Printer,
-    FileText, ChevronDown, MoreHorizontal, Clock
+    FileText, ChevronDown, MoreHorizontal, Clock, CheckCircle2, XCircle
 } from 'lucide-react';
+import api from '../../../../api/api';
 
 const ApproveLeaveRequest = () => {
-    const leaveRequests = [
-        // Placeholder data if needed, or empty as per screenshot
-    ];
+    const [leaveRequests, setLeaveRequests] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    const fetchLeaveRequests = async () => {
+        try {
+            const { data } = await api.get('/api/leaves/requests');
+            setLeaveRequests(data);
+        } catch (error) {
+            console.error('Error fetching leave requests:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchLeaveRequests();
+    }, []);
+
+    const handleStatusUpdate = async (id, status) => {
+        try {
+            await api.patch(`/api/leaves/requests/${id}/status`, { status });
+            alert(`Leave request ${status.toLowerCase()} successfully`);
+            fetchLeaveRequests();
+        } catch (error) {
+            console.error('Error updating leave status:', error);
+            alert('Failed to update leave status');
+        }
+    };
 
     return (
         <div className="space-y-8 animate-in fade-in duration-500 pb-12 text-slate-800">
@@ -66,20 +92,57 @@ const ApproveLeaveRequest = () => {
                         <tbody>
                             {leaveRequests.length > 0 ? (
                                 leaveRequests.map((req, idx) => (
-                                    <tr key={idx} className="border-b border-snow-50 hover:bg-snow-50/50 transition-colors">
-                                        {/* Row data */}
+                                    <tr key={req._id} className="border-b border-snow-50 hover:bg-snow-50/50 transition-colors">
+                                        <td className="py-4 px-4 text-xs font-bold text-navy-700">{idx + 1}</td>
+                                        <td className="py-4 px-4 text-xs font-bold text-navy-700">{req.applicantId?.name || 'N/A'}</td>
+                                        <td className="py-4 px-4 text-xs font-medium text-secondary text-center capitalize">{req.leaveType}</td>
+                                        <td className="py-4 px-4 text-xs font-medium text-secondary text-center">{new Date(req.startDate).toLocaleDateString()}</td>
+                                        <td className="py-4 px-4 text-xs font-medium text-secondary text-center">{new Date(req.endDate).toLocaleDateString()}</td>
+                                        <td className="py-4 px-4 text-xs font-medium text-secondary text-center">{new Date(req.createdAt).toLocaleDateString()}</td>
+                                        <td className="py-4 px-4 text-center">
+                                            <span className={`px-2 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${req.status === 'Approved' ? 'bg-emerald-100 text-emerald-600' :
+                                                req.status === 'Rejected' ? 'bg-rose-100 text-rose-600' :
+                                                    'bg-amber-100 text-amber-600'
+                                                }`}>
+                                                {req.status}
+                                            </span>
+                                        </td>
+                                        <td className="py-4 px-4 text-center">
+                                            <div className="flex items-center justify-center space-x-2">
+                                                {req.status === 'Pending' && (
+                                                    <>
+                                                        <button
+                                                            onClick={() => handleStatusUpdate(req._id, 'Approved')}
+                                                            className="p-1.5 text-emerald-500 hover:bg-emerald-50 rounded-lg transition-colors"
+                                                            title="Approve"
+                                                        >
+                                                            <CheckCircle2 size={16} />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleStatusUpdate(req._id, 'Rejected')}
+                                                            className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
+                                                            title="Reject"
+                                                        >
+                                                            <XCircle size={16} />
+                                                        </button>
+                                                    </>
+                                                )}
+                                                <button className="p-1.5 text-secondary hover:text-primary transition-colors">
+                                                    <MoreHorizontal size={16} />
+                                                </button>
+                                            </div>
+                                        </td>
                                     </tr>
                                 ))
                             ) : (
                                 <tr>
                                     <td colSpan="8" className="py-24 text-center">
                                         <div className="flex flex-col items-center justify-center space-y-4 opacity-40">
-                                            <div className="w-16 h-16 bg-snow-100 rounded-3xl flex items-center justify-center text-secondary">
+                                            <div className="w-16 h-16 bg-snow-100 rounded-3xl flex items-center justify-center text-secondary text-center">
                                                 <Clock size={28} />
                                             </div>
                                             <div className="space-y-1">
-                                                <p className="text-[11px] font-black uppercase tracking-[0.2em] text-secondary">Processing..</p>
-                                                <p className="text-[10px] font-bold text-secondary/60 lowercase italic">No records found matching your criteria</p>
+                                                <p className="text-[11px] font-black uppercase tracking-[0.2em] text-secondary">{loading ? 'Loading...' : 'No records found'}</p>
                                             </div>
                                         </div>
                                     </td>

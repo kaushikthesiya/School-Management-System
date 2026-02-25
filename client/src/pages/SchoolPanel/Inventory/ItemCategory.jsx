@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, Download, Printer, FileText, LayoutGrid, ChevronDown, Edit, Trash2 } from 'lucide-react';
 import { Card, Button } from '../../../components/SnowUI';
+import api from '../../../api/api';
+import { useToast } from '../../../context/ToastContext';
 
 const Input = ({ label, name, value, onChange, placeholder, required }) => (
     <div className="space-y-2 group">
@@ -38,25 +40,48 @@ const Textarea = ({ label, name, value, onChange, placeholder }) => (
 );
 
 const ItemCategory = () => {
+    const { showToast } = useToast();
     const [searchTerm, setSearchTerm] = useState('');
     const [openActionId, setOpenActionId] = useState(null);
-    const [formData, setFormData] = useState({ categoryName: '', description: '' });
+    const [formData, setFormData] = useState({ name: '', description: '' });
+    const [categories, setCategories] = useState([]);
+    const [loading, setLoading] = useState(false);
 
-    const [categories] = useState([
-        { id: 1, name: 'Stationery', description: 'Pens, Pencils, Notebooks' },
-        { id: 2, name: 'Furniture', description: 'Chairs, Tables, Desks' },
-        { id: 3, name: 'Electronics', description: 'Computers, Projectors' },
-        { id: 4, name: 'Sports', description: 'Balls, Bats, Nets' },
-    ]);
+    const fetchCategories = async () => {
+        try {
+            const res = await api.get('/api/inventory/category');
+            setCategories(res.data);
+        } catch (error) {
+            showToast('Error fetching categories', 'error');
+        }
+    };
+
+    useEffect(() => {
+        fetchCategories();
+    }, []);
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
+    const handleSave = async () => {
+        if (!formData.name) return showToast('Category name is required', 'warning');
+        setLoading(true);
+        try {
+            await api.post('/inventory/category', formData);
+            showToast('Category saved successfully', 'success');
+            setFormData({ name: '', description: '' });
+            fetchCategories();
+        } catch (error) {
+            showToast('Error saving category', 'error');
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return (
         <div className="space-y-6 animate-in fade-in duration-500 pb-20">
-            {/* Header */}
             <div className="flex justify-between items-center px-4">
                 <div>
                     <h1 className="text-xl font-black text-slate-800 tracking-tight">Item Category</h1>
@@ -71,7 +96,6 @@ const ItemCategory = () => {
             </div>
 
             <div className="px-4 grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Add Category Form */}
                 <Card className="p-10 border-none shadow-snow-lg bg-white rounded-[40px] h-fit">
                     <h3 className="text-sm font-black text-slate-700 uppercase tracking-widest mb-8">
                         Add Item Category
@@ -79,8 +103,8 @@ const ItemCategory = () => {
                     <div className="space-y-6">
                         <Input
                             label="ITEM CATEGORY"
-                            name="categoryName"
-                            value={formData.categoryName}
+                            name="name"
+                            value={formData.name}
                             onChange={handleInputChange}
                             placeholder="Category Name *"
                             required
@@ -93,14 +117,17 @@ const ItemCategory = () => {
                             placeholder="Description"
                         />
                         <div className="flex justify-center pt-6">
-                            <Button className="bg-[#7c32ff] hover:bg-[#6b25ea] text-white rounded-2xl px-12 py-4 text-[10px] font-black uppercase tracking-widest flex items-center space-x-2 shadow-2xl shadow-purple-500/30 active:scale-95 transition-all w-full">
-                                <span>✓ SAVE CATEGORY</span>
+                            <Button
+                                onClick={handleSave}
+                                disabled={loading}
+                                className="bg-[#7c32ff] hover:bg-[#6b25ea] text-white rounded-2xl px-12 py-4 text-[10px] font-black uppercase tracking-widest flex items-center justify-center space-x-2 shadow-2xl shadow-purple-500/30 active:scale-95 transition-all w-full h-[52px]"
+                            >
+                                <span>{loading ? 'SAVING...' : '✓ SAVE CATEGORY'}</span>
                             </Button>
                         </div>
                     </div>
                 </Card>
 
-                {/* Category List */}
                 <Card className="lg:col-span-2 p-10 border-none shadow-snow-lg bg-white rounded-[40px] overflow-visible">
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
                         <h3 className="text-sm font-black text-slate-700 uppercase tracking-widest">
@@ -108,13 +135,13 @@ const ItemCategory = () => {
                         </h3>
                         <div className="flex items-center gap-4">
                             <div className="relative group flex-1 md:w-64">
-                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-primary transition-colors" size={14} strokeWidth={3} />
+                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-primary" size={14} strokeWidth={3} />
                                 <input
                                     type="text"
                                     placeholder="SEARCH"
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="w-full bg-slate-50 border-none rounded-2xl pl-11 pr-4 py-3 text-[10px] font-black tracking-widest text-slate-600 focus:ring-2 focus:ring-primary/10 outline-none transition-all placeholder:text-slate-300"
+                                    className="w-full bg-slate-50 border-none rounded-2xl pl-11 pr-4 py-3 text-[10px] font-black tracking-widest text-slate-600 outline-none transition-all placeholder:text-slate-300"
                                 />
                             </div>
                             <div className="flex items-center p-1 bg-slate-50 rounded-2xl">
@@ -131,39 +158,30 @@ const ItemCategory = () => {
                         <table className="w-full">
                             <thead>
                                 <tr className="bg-slate-50/50">
-                                    <th className="text-left py-5 px-6 text-[10px] font-black text-slate-400 uppercase tracking-widest first:rounded-l-2xl">
-                                        ↓ SL
-                                    </th>
-                                    <th className="text-left py-5 px-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                        ↓ CATEGORY
-                                    </th>
-                                    <th className="text-left py-5 px-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                        ↓ DESCRIPTION
-                                    </th>
-                                    <th className="text-right py-5 px-6 text-[10px] font-black text-slate-400 uppercase tracking-widest last:rounded-r-2xl">
-                                        ACTION
-                                    </th>
+                                    <th className="text-left py-5 px-6 text-[10px] font-black text-slate-400 uppercase tracking-widest first:rounded-l-2xl">SL</th>
+                                    <th className="text-left py-5 px-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">CATEGORY</th>
+                                    <th className="text-left py-5 px-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">DESCRIPTION</th>
+                                    <th className="text-right py-5 px-6 text-[10px] font-black text-slate-400 uppercase tracking-widest last:rounded-r-2xl">ACTION</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-50">
-                                {categories.map((cat, idx) => (
-                                    <tr key={cat.id} className="group hover:bg-slate-50/50 transition-colors">
+                                {categories.filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase())).map((cat, idx) => (
+                                    <tr key={cat._id} className="group hover:bg-slate-50/50 transition-colors">
                                         <td className="py-6 px-6 font-bold text-slate-600 text-xs">{idx + 1}</td>
                                         <td className="py-6 px-6 text-slate-600 text-xs font-bold">{cat.name}</td>
                                         <td className="py-6 px-6 text-slate-400 text-xs">{cat.description}</td>
-                                        <td className="py-6 px-6 text-right relative">
+                                        <td className="py-6 px-6 text-right">
                                             <div className="relative inline-block">
                                                 <button
-                                                    onClick={() => setOpenActionId(openActionId === cat.id ? null : cat.id)}
-                                                    className={`flex items-center space-x-2 bg-white border border-slate-200 rounded-full pl-6 pr-2 py-1.5 text-[10px] font-black transition-all group/btn shadow-sm active:scale-95 ${openActionId === cat.id ? 'text-primary border-primary ring-4 ring-primary/5' : 'text-slate-400 hover:text-primary hover:border-primary'}`}
+                                                    onClick={() => setOpenActionId(openActionId === cat._id ? null : cat._id)}
+                                                    className={`flex items-center space-x-2 bg-white border border-slate-200 rounded-full pl-6 pr-2 py-1.5 text-[10px] font-black transition-all group/btn shadow-sm active:scale-95 ${openActionId === cat._id ? 'text-primary border-primary ring-4 ring-primary/5' : 'text-slate-400 hover:text-primary hover:border-primary'}`}
                                                 >
                                                     <span className="uppercase tracking-widest">SELECT</span>
-                                                    <div className={`w-6 h-6 rounded-full flex items-center justify-center transition-colors ${openActionId === cat.id ? 'bg-primary text-white' : 'bg-slate-50 group-hover/btn:bg-primary/5'}`}>
-                                                        <ChevronDown size={14} className={`transition-transform duration-300 ${openActionId === cat.id ? 'rotate-180' : ''}`} />
+                                                    <div className={`w-6 h-6 rounded-full flex items-center justify-center transition-colors ${openActionId === cat._id ? 'bg-primary text-white' : 'bg-slate-50 group-hover/btn:bg-primary/5'}`}>
+                                                        <ChevronDown size={14} className={`transition-transform duration-300 ${openActionId === cat._id ? 'rotate-180' : ''}`} />
                                                     </div>
                                                 </button>
-
-                                                {openActionId === cat.id && (
+                                                {openActionId === cat._id && (
                                                     <>
                                                         <div className="fixed inset-0 z-10" onClick={() => setOpenActionId(null)} />
                                                         <div className="absolute right-0 mt-2 w-48 bg-white rounded-2xl shadow-2xl border border-slate-50 py-2 z-20 animate-in zoom-in-95 duration-200 origin-top-right">

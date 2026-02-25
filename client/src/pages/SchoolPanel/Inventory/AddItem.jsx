@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, Button } from '../../../components/SnowUI';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { ChevronDown } from 'lucide-react';
+import api from '../../../api/api';
+import { useToast } from '../../../context/ToastContext';
 
 const Select = ({ label, name, value, onChange, options, placeholder, required }) => (
     <div className="space-y-2 group">
@@ -19,7 +21,7 @@ const Select = ({ label, name, value, onChange, options, placeholder, required }
             >
                 <option value="">{placeholder}</option>
                 {options.map(opt => (
-                    <option key={opt.value || opt} value={opt.value || opt}>{opt.label || opt}</option>
+                    <option key={opt._id} value={opt._id}>{opt.name}</option>
                 ))}
             </select>
             <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none group-focus-within:text-primary transition-colors" size={14} />
@@ -64,24 +66,52 @@ const Textarea = ({ label, name, value, onChange, placeholder }) => (
 
 const AddItem = () => {
     const navigate = useNavigate();
+    const { school_slug } = useParams();
+    const { showToast } = useToast();
+    const [loading, setLoading] = useState(false);
+    const [categories, setCategories] = useState([]);
     const [formData, setFormData] = useState({
         name: '',
         category: '',
-        supplier: '',
-        store: '',
-        quantity: '',
-        price: '',
+        unit: '',
         description: ''
     });
+
+    useEffect(() => {
+        const fetchCategories = async () => {
+            try {
+                const res = await api.get('/api/inventory/category');
+                setCategories(res.data);
+            } catch (error) {
+                showToast('Error fetching categories', 'error');
+            }
+        };
+        fetchCategories();
+    }, []);
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
+    const handleSave = async () => {
+        if (!formData.name || !formData.category || !formData.unit) {
+            return showToast('Please fill required fields', 'warning');
+        }
+        setLoading(true);
+        try {
+            await api.post('/api/inventory/item', formData);
+            showToast('Item saved successfully', 'success');
+            navigate(`/${school_slug}/inventory-list`);
+        } catch (error) {
+            showToast('Error saving item', 'error');
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return (
         <div className="space-y-6 animate-in fade-in duration-500 pb-20">
-            {/* Header */}
             <div className="flex justify-between items-center px-4">
                 <div>
                     <h1 className="text-xl font-black text-slate-800 tracking-tight">Add Item</h1>
@@ -115,39 +145,16 @@ const AddItem = () => {
                             value={formData.category}
                             onChange={handleInputChange}
                             placeholder="Select Category"
-                            options={['Stationery', 'Furniture', 'Electronics', 'Sports']}
+                            options={categories}
                             required
                         />
                         <Input
-                            label="ITEM SUPPLYER"
-                            name="supplier"
-                            value={formData.supplier}
+                            label="UNIT (e.g., Kg, Pcs)"
+                            name="unit"
+                            value={formData.unit}
                             onChange={handleInputChange}
-                            placeholder="Enter Supplier Name"
-                        />
-                        <Input
-                            label="ITEM STORE"
-                            name="store"
-                            value={formData.store}
-                            onChange={handleInputChange}
-                            placeholder="Enter Store Name"
-                        />
-                        <Input
-                            label="QUANTITY"
-                            name="quantity"
-                            value={formData.quantity}
-                            onChange={handleInputChange}
-                            placeholder="Enter Quantity"
-                            type="number"
+                            placeholder="Enter Unit"
                             required
-                        />
-                        <Input
-                            label="UNIT PRICE"
-                            name="price"
-                            value={formData.price}
-                            onChange={handleInputChange}
-                            placeholder="Enter Price"
-                            type="number"
                         />
                         <div className="md:col-span-3">
                             <Textarea
@@ -162,13 +169,17 @@ const AddItem = () => {
 
                     <div className="flex justify-end gap-4 pt-8">
                         <Button
-                            onClick={() => navigate('/book-list')}
+                            onClick={() => navigate(`/${school_slug}/inventory-list`)}
                             className="bg-white border-2 border-slate-100 text-slate-400 hover:text-slate-600 hover:border-slate-200 rounded-2xl px-8 py-4 text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all"
                         >
                             CANCEL
                         </Button>
-                        <Button className="bg-[#7c32ff] hover:bg-[#6b25ea] text-white rounded-2xl px-12 py-4 text-[10px] font-black uppercase tracking-widest flex items-center space-x-2 shadow-2xl shadow-purple-500/30 active:scale-95 transition-all">
-                            <span>✓ SAVE ITEM</span>
+                        <Button
+                            onClick={handleSave}
+                            disabled={loading}
+                            className="bg-[#7c32ff] hover:bg-[#6b25ea] text-white rounded-2xl px-12 py-4 text-[10px] font-black uppercase tracking-widest flex items-center space-x-2 shadow-2xl shadow-purple-500/30 active:scale-95 transition-all"
+                        >
+                            <span>{loading ? 'SAVING...' : '✓ SAVE ITEM'}</span>
                         </Button>
                     </div>
                 </Card>

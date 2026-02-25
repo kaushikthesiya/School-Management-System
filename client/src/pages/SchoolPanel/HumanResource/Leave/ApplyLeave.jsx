@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, Button, Input, Select } from '../../../../components/SnowUI';
 import {
     FileText, Search, Download, Printer, Copy,
     FileSpreadsheet, FilePlus, ChevronDown, MoreHorizontal,
     Calendar, Paperclip, CheckCircle2, Clock
 } from 'lucide-react';
+import api from '../../../../api/api';
+import { useAuth } from '../../../../context/AuthContext';
 
 const ApplyLeave = () => {
     const { user } = useAuth();
@@ -263,8 +265,8 @@ const ApplyLeave = () => {
                                                 <td className="py-4 px-4 text-xs font-medium text-secondary text-center">{new Date(leave.createdAt).toLocaleDateString()}</td>
                                                 <td className="py-4 px-4 text-center">
                                                     <span className={`px-2 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${leave.status === 'Approved' ? 'bg-emerald-100 text-emerald-600' :
-                                                            leave.status === 'Rejected' ? 'bg-rose-100 text-rose-600' :
-                                                                'bg-amber-100 text-amber-600'
+                                                        leave.status === 'Rejected' ? 'bg-rose-100 text-rose-600' :
+                                                            'bg-amber-100 text-amber-600'
                                                         }`}>
                                                         {leave.status}
                                                     </span>

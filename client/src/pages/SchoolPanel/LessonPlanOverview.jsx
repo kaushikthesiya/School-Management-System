@@ -33,7 +33,7 @@ const LessonPlanOverview = () => {
                 api.get('/api/lesson-plan/plans'),
                 api.get('/api/academic/classes'),
                 api.get('/api/academic/subjects'),
-                api.get('/api/employees/teachers') // Assuming this endpoint exists
+                api.get('/api/staff?role=Teacher')
             ]);
             setPlans(planRes.data);
             setClasses(classRes.data);

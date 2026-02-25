@@ -31,7 +31,7 @@ const PayrollBulkPrint = () => {
 
     const fetchData = async () => {
         try {
-            const roleRes = await api.get('/api/employees/roles');
+            const roleRes = await api.get('/api/school/rbac/roles');
             setRoles(roleRes.data);
         } catch (error) {
             console.error('Error fetching roles:', error);
@@ -43,16 +43,44 @@ const PayrollBulkPrint = () => {
     }, []);
 
     const handleSearch = async () => {
+        if (!filters.month || !filters.year) {
+            alert('Please select month and year');
+            return;
+        }
         setLoading(true);
         setActiveFilters(filters);
-        // Simulate fetching staff for payroll. In a real app, this would hit an API endpoint with filters.
-        // const res = await api.get('/api/payroll/bulk-list', { params: filters });
-
-        // Fetch real data here
-        setTimeout(() => {
-            setStaffList([]);
+        try {
+            const res = await api.get('/api/payroll', {
+                params: {
+                    month: filters.month,
+                    year: filters.year,
+                    role: filters.role
+                }
+            });
+            const formattedList = res.data.map(item => ({
+                _id: item.staff._id,
+                name: item.staff.name,
+                role: item.staff.role,
+                amount: item.staff.salary || 0,
+                status: item.status,
+                payslipId: item.payslipId
+            }));
+            setStaffList(formattedList);
+        } catch (error) {
+            console.error('Error searching payroll:', error);
+            alert('Failed to fetch payroll data');
+        } finally {
             setLoading(false);
-        }, 800);
+        }
+    };
+
+    const handlePrintAll = () => {
+        if (staffList.length === 0) return;
+        window.print();
+    };
+
+    const handlePrintSingle = (id) => {
+        window.print();
     };
 
     return (
@@ -115,10 +143,11 @@ const PayrollBulkPrint = () => {
                 <div className="flex justify-end mt-10 pr-10">
                     <Button
                         onClick={handleSearch}
+                        disabled={loading}
                         className="!bg-[#7c32ff] !rounded-lg flex items-center space-x-2 px-8 py-3 shadow-lg shadow-purple-500/20 active:scale-95 transition-all"
                     >
                         <Search size={18} />
-                        <span className="uppercase text-[11px] font-black tracking-widest">SEARCH</span>
+                        <span className="uppercase text-[11px] font-black tracking-widest">{loading ? 'SEARCHING...' : 'SEARCH'}</span>
                     </Button>
                 </div>
             </Card>
@@ -127,7 +156,9 @@ const PayrollBulkPrint = () => {
                 <Card className="p-6 border-none shadow-snow-lg rounded-[20px] bg-white overflow-hidden min-h-[400px]">
                     <div className="mb-6 flex justify-between items-center">
                         <h2 className="text-lg font-bold text-[#3E4D67]">Staff Payroll List</h2>
-                        <button className="flex items-center space-x-2 bg-slate-800 text-white px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-slate-700 transition-all">
+                        <button
+                            onClick={handlePrintAll}
+                            className="flex items-center space-x-2 bg-slate-800 text-white px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-slate-700 transition-all">
                             <Printer size={14} />
                             <span>Print All</span>
                         </button>
@@ -169,7 +200,9 @@ const PayrollBulkPrint = () => {
                                                 </span>
                                             </td>
                                             <td className="px-4 py-3 text-right">
-                                                <button className="text-[#7c32ff] hover:text-[#6a25e6] transition-colors p-2 rounded-lg hover:bg-purple-50">
+                                                <button
+                                                    onClick={() => handlePrintSingle(item._id)}
+                                                    className="text-[#7c32ff] hover:text-[#6a25e6] transition-colors p-2 rounded-lg hover:bg-purple-50">
                                                     <Printer size={16} />
                                                 </button>
                                             </td>

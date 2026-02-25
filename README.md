@@ -128,6 +128,21 @@ Default passwords for newly admitted students and parents:
 - **Headers**: `Authorization`, `x-school-slug`
 - **Body**: Partial fields from the Add Student body.
 
+### Get Multi-Class Assignments (Overhaul)
+- **URL**: `/api/students/multi-class?classId=CLASS_ID&section=A&studentId=STUDENT_ID`
+- **Method**: `GET`
+- **Headers**: `Authorization`, `x-school-slug`
+- **Query Params**: `classId`, `section`, `studentId` (all optional). If `studentId` is provided, fetches ONLY that student's assignments.
+- **Response**: Array of objects grouped by student:
+```json
+[
+    {
+        "student": { ... },
+        "assignments": [ { "class": "...", "section": "...", "academicYear": "..." } ]
+    }
+]
+```
+
 ### Add Multi-Class Assignment
 - **URL**: `/api/students/multi-class`
 - **Method**: `POST`
@@ -146,6 +161,26 @@ Default passwords for newly admitted students and parents:
 - **URL**: `/api/students/multi-class/:id`
 - **Method**: `DELETE`
 - **Headers**: `Authorization`, `x-school-slug`
+
+### Bulk Update Multi-Class Assignments (New)
+- **URL**: `/api/students/:id/multi-class/bulk`
+- **Method**: `POST`
+- **Headers**: `Authorization`, `x-school-slug`
+- **Body**:
+```json
+{
+    "primaryClass": "CLASS_ID",
+    "primarySection": "A",
+    "assignments": [
+        {
+            "classId": "SECONDARY_CLASS_ID",
+            "section": "B",
+            "academicYearId": "SESSION_ID"
+        }
+    ]
+}
+```
+- **Note**: This will replace all existing secondary assignments for the student and optionally update their primary class/section.
 
 ### Add Document to Student
 - **URL**: `/api/students/:id/documents`
@@ -806,3 +841,329 @@ Use a **Student Token** or **Parent Token** for these requests.
 - **Method**: `POST`
 - **Headers**: `Authorization`, `x-school-slug`
 - **Body**: `{ "name": "Senior Teacher" }`
+
+---
+
+## 15. Inventory Management
+
+### Get Categories
+- **URL**: `/api/inventory/category`
+- **Method**: `GET`
+- **Headers**: `Authorization`, `x-school-slug`
+
+### Add Category
+- **URL**: `/api/inventory/category`
+- **Method**: `POST`
+- **Headers**: `Authorization`, `x-school-slug`
+- **Body**:
+```json
+{
+    "name": "Stationery",
+    "description": "Office and student stationery"
+}
+```
+
+### Get Items
+- **URL**: `/api/inventory/item`
+- **Method**: `GET`
+- **Headers**: `Authorization`, `x-school-slug`
+
+### Add Item
+- **URL**: `/api/inventory/item`
+- **Method**: `POST`
+- **Headers**: `Authorization`, `x-school-slug`
+- **Body**:
+```json
+{
+    "name": "Ball Pen",
+    "category": "CATEGORY_ID",
+    "unit": "Pcs",
+    "description": "Blue ink pen"
+}
+```
+
+### Get Stores/Warehouses
+- **URL**: `/api/inventory/store`
+- **Method**: `GET`
+- **Headers**: `Authorization`, `x-school-slug`
+
+### Add Store
+- **URL**: `/api/inventory/store`
+- **Method**: `POST`
+- **Headers**: `Authorization`, `x-school-slug`
+- **Body**:
+```json
+{
+    "name": "Main Store",
+    "code": "STR001",
+    "description": "Primary inventory storage"
+}
+```
+
+### Get Suppliers
+- **URL**: `/api/inventory/supplier`
+- **Method**: `GET`
+- **Headers**: `Authorization`, `x-school-slug`
+
+### Add Supplier
+- **URL**: `/api/inventory/supplier`
+- **Method**: `POST`
+- **Headers**: `Authorization`, `x-school-slug`
+- **Body**:
+```json
+{
+    "name": "General Traders",
+    "email": "contact@generaltraders.com",
+    "mobile": "+919988776655",
+    "address": "Market Street, City",
+    "contactPerson": "Mr. Sharma"
+}
+```
+
+### Inventory Transactions (Receive/Sell/Issue)
+- **URL**: `/api/inventory/transaction`
+- **Method**: `POST`
+- **Headers**: `Authorization`, `x-school-slug`
+- **Body (Receive)**:
+```json
+{
+    "item": "ITEM_ID",
+    "supplier": "SUPPLIER_ID",
+    "store": "STORE_ID",
+    "quantity": 100,
+    "price": 5.50,
+    "transactionType": "Receive",
+    "date": "2026-02-25",
+    "referenceNo": "REC-001"
+}
+```
+- **Body (Sell)**:
+```json
+{
+    "item": "ITEM_ID",
+    "quantity": 10,
+    "price": 10.00,
+    "transactionType": "Sell",
+    "role": "Student",
+    "buyerName": "Kaushik",
+    "paymentMethod": "Cash"
+}
+```
+- **Body (Issue)**:
+```json
+{
+    "item": "ITEM_ID",
+    "quantity": 2,
+    "transactionType": "Issue",
+    "role": "Staff",
+    "buyerName": "John Member",
+    "date": "2026-02-25",
+    "dueDate": "2026-03-25"
+}
+```
+
+### Get Transactions
+- **URL**: `/api/inventory/transaction?type=Receive`
+- **Method**: `GET`
+- **Headers**: `Authorization`, `x-school-slug`
+- **Query Params**: `type` (Optional: `Receive`, `Sell`, `Issue`)
+
+---
+
+
+
+## Exam management in offline schools 
+
+Efficient Examination Management: Our Examination Management System module streamlines and manages examination activities, including defining examination schemes and timetables, setting grading and passing criteria, paper evaluation, and automatic generation of final report cards. This ensures a clash-free and organized exam schedule.
+Seamless Board Coordination: The module enables school administrators to seamlessly supervise pre-exam, exam conduction, and post-exam processes for various boards, such as CBSE, ICSE, IB, and more. It also automates the generation of grade books using a pre-designed template of the institution.
+Simplified Faculty Tasks: It simplifies exam-related tasks for school faculty, assisting invigilators in managing their duties, such as duty exchanges, and preventing any mismanagement during exams.
+Timely Report Card Distribution: The module ensures the timely entry of marks into the ERP system, facilitating the prompt distribution of report cards to students and parents.
+
+
+
+
+
+## transport management in offline schools 
+
+Real-Time GPS Tracking: Our school ERP utilizes state-of-the-art GPS tracking technology to monitor the exact location of school buses, providing precise data to the relevant authorities. This feature ensures the safety and security of students during their journey.
+Driver Accountability and Speed Monitoring: We prioritize student safety by enabling real-time monitoring of bus speed and ensuring driver accountability. This proactive approach helps prevent potential emergencies and promotes responsible driving.
+Scheduled Timings and Optimized Routing: Our software maintains accurate records of scheduled bus timings and optimizes routing for maximum efficiency. This ensures that students arrive at school and return home on time, minimizing disruptions to their daily schedules.
+Fees Management: Our school ERP simplifies fee management related to transportation. It offers a transparent and efficient system for parents and the school to handle transportation fees.
+Attendance Updates: The software allows for real-time attendance updates for students during their bus journey, providing parents and school management with instant insights into student whereabouts.
+Transport Alerts for Parents: We prioritize the safety of each student by offering real-time transport alerts to parents. These alerts can be received through a mobile application, allowing parents to take immediate action in case of any mishap or emergency during the journey.
+Pick-up and Drop-off Timings: Our system keeps parents informed about the correct pick-up and drop-off timings for their wards. This feature offers complete peace of mind to parents, knowing that their children are in safe hands.
+
+
+
+
+
+## Leave Management in Offline Schools
+
+1. Efficient Leave Requests
+Employees can submit leave requests online, specifying the type of leave (e.g., sick leave, vacation) and desired dates. This streamlines the leave application process.
+
+2. Workflow Automation
+The module automates the leave approval workflow, routing requests to the appropriate supervisors or administrators for review and approval. Notifications keep everyone informed of leave status.
+
+3. Leave Balances
+Employees can view their leave balances in real time, helping them plan their time off effectively and preventing leave conflicts.
+
+4. Calendar Integration
+Leave requests are integrated with the school calendar, allowing administrators to visualize and plan for staff absences and replacements.
+
+5. Detailed Reporting
+The module generates reports on leave utilization, patterns, and trends, enabling HR managers to make data-driven decisions about leave policies and staffing.
+
+
+
+
+## Certificate Management 
+
+Create Custom Certificate Templates:
+Our module empowers schools to design and customize certificate templates for various purposes, including academic achievements, sports accolades, and participation in school events. Certificates can be designed to align with the school's branding and style.
+
+Digital Archive of Certificates:
+The module maintains a secure digital archive of all issued certificates. This repository ensures easy access to past certificates for verification or reprinting, enhancing certificate management and retrieval.
+
+Efficient Electronic Certificate Distribution:
+Schools can streamline the distribution of certificates electronically, eliminating the need for physical printing and delivery. This not only reduces administrative costs but also has a positive environmental impact.
+
+Bulk Certificate Printing:
+For physical certificates, our module supports bulk printing to expedite the process, especially during events or graduation ceremonies. Administrators can efficiently print certificates in batches, ensuring a smooth certificate distribution process.
+
+By implementing our School ERP Certificate Management Module, educational institutions can simplify certificate design, management, and distribution, whether in digital or physical format. Experience the benefits of a comprehensive certificate management system with our ERP solution.
+
+
+
+
+## Biometric Integration
+
+1. Enhanced Security
+Biometric integration enhances security by using unique biological identifiers such as fingerprints or facial recognition for access control. This ensures that only authorized individuals can enter secure areas.
+
+2. Attendance Tracking
+Biometric integration automates attendance tracking for both students and staff. It eliminates the need for manual attendance registers and reduces the risk of attendance fraud.
+
+3. Streamlined Processes
+Biometric authentication simplifies various processes, including library book checkouts, cafeteria payments, and exam attendance verification, streamlining school operations.
+
+4. Data Accuracy
+Biometric data is highly accurate, reducing errors in attendance records and access control. It provides a reliable and tamper-resistant method for identity verification.
+
+5. Visitor Management
+The module can extend biometric authentication to visitor management, ensuring that visitors are properly identified and authorized before entering the premises.
+
+6. Audit Trails
+Detailed audit trails of biometric authentication events are maintained, allowing for traceability and accountability in case of security incidents or breaches.
+
+7. Integration Flexibility
+Biometric integration can be customized to integrate with various school systems, including access control, attendance management, and library management.
+
+
+
+## News & Events 
+
+1. Announcements
+The module allows schools to post news and event announcements, keeping students, parents, and staff informed about important updates, deadlines, and activities.
+
+2. Event Details
+Detailed information about upcoming events, including dates, times, venues, and descriptions, can be easily accessed through the module.
+
+3. Archived News
+The module maintains an archive of past news articles and event listings, allowing users to access historical information.
+
+
+
+## Inventory Management 
+
+
+1. Real-Time Inventory Tracking
+The module provides real-time tracking of inventory levels, enabling staff to monitor stock availability and prevent shortages or overstock situations.
+
+2. Supplier Management
+It includes tools for managing supplier information, orders, and procurement. Schools can efficiently communicate with suppliers and manage purchase orders.
+
+3. Asset Lifecycle Management
+Beyond consumable inventory, the module also tracks assets' lifecycles, including maintenance schedules, depreciation, and retirement or disposal.
+
+4. Inventory Valuation
+Inventory valuation methods are supported, allowing schools to determine the value of their inventory accurately for financial reporting and decision-making.
+
+5. Automated Reordering
+The module can automate the reordering of inventory items based on predefined thresholds, ensuring that essential supplies are always available.
+
+
+
+
+## Report & Result Analysis
+
+1. Visual Analytics
+The module allows for the creation of visually appealing performance charts and graphs, making it easier for teachers, students, and parents to interpret and understand academic data.
+
+2. Accessibility
+Parents and students can securely access report cards online, view grades, attendance records, and teacher comments. This accessibility promotes transparency and keeps stakeholders informed.
+
+3. Teacher Comments
+Teachers can add personalized comments and feedback on report cards, providing qualitative insights into a student's strengths, areas for improvement, and overall performance.
+
+4. Comparative Analysis
+The module enables teachers and administrators to conduct comparative analysis by tracking individual student progress over time and comparing it with class or school averages.
+
+5. Performance Trends
+Through historical data and trend analysis, the module helps educators identify patterns and trends in student performance. This information guides curriculum adjustments and teaching strategies.
+
+6. Parent-Teacher Conferencing
+Integrated scheduling tools allow parents to book appointments for parent-teacher meetings based on their child's report card, fostering effective communication between teachers and parents.
+
+7. Data Export and Printing
+Users can export report card data for record-keeping or printing hard copies when needed, ensuring compliance with traditional documentation requirements.
+
+
+
+## Holiday & School Planner
+
+Comprehensive School Calendar:
+Our School Calendar module provides a detailed and comprehensive calendar that includes holidays, special events, academic terms, examination dates, and extracurricular activities. Users can access thorough information about each event, ensuring everyone stays informed.
+
+Detailed Event Descriptions and Information:
+For each event, the module allows administrators to provide in-depth descriptions, event schedules, venue details, and contact information. This ensures that all stakeholders have easy access to essential event information.
+
+Automated Event Notifications:
+The module automatically generates event notifications and reminders, sending them to parents, students, and staff members. These notifications ensure that everyone is well-informed and prepared for upcoming events.
+
+Event Registration and RSVP:
+For select events, the module supports event registration and RSVP functionality. Users can easily register for events, and administrators can manage attendance lists and logistics efficiently.
+
+Color-Coding and Categorization:
+Events on the calendar can be color-coded or categorized, simplifying the identification of different types of events at a glance. This feature enhances calendar navigation and usability.
+
+Integration with Academic Calendar:
+The module seamlessly integrates with the academic calendar, ensuring that academic events, such as examinations and parent-teacher meetings, are well-coordinated with other school activities.
+
+By implementing our School ERP Calendar Management Module, educational institutions can enhance event management, improve communication, and ensure that everyone remains updated about important school events and activities. Experience the benefits of comprehensive calendar management with our ERP solution.
+
+
+
+## Online Payment Gateway
+
+
+Secure Payment Processing:
+Our module prioritizes secure and encrypted online payment transactions, ensuring the protection of sensitive financial data. It adheres to industry-standard security protocols, including SSL encryption, to safeguard payment information.
+
+Flexible Payment Options:
+We offer a range of payment options to accommodate the preferences of parents and guardians. Users can make payments via credit/debit cards, net banking, mobile wallets, and UPI, ensuring a convenient and accessible payment experience.
+
+Real-Time Payment Confirmation:
+The module provides real-time payment confirmation, instantly notifying users of successful transactions. This feature is especially valuable during peak fee payment periods, where quick confirmation is essential.
+
+Convenient Recurring Payments:
+For recurring expenses such as tuition fees, our module allows parents to set up automated recurring payments. This simplifies fee payments and reduces the administrative burden on parents.
+
+Transparent Payment History and Records:
+Users have access to a comprehensive payment history, including transaction details, dates, and amounts. This transparency empowers parents to track their financial contributions to the school effectively.
+
+Seamless Payment Gateway Integration:
+Our module seamlessly integrates with popular payment gateways, ensuring a smooth and reliable payment experience. It supports multiple currencies and is compatible with various banking systems.
+
+
+

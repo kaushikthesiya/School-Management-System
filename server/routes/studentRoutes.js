@@ -2,6 +2,47 @@ const express = require('express');
 const router = express.Router();
 const { protect, authorize } = require('../middleware/authMiddleware');
 
+// @desc    Get multi-class assignments (Enhanced for overhaul)
+// @route   GET /api/students/multi-class
+router.get('/multi-class', protect, async (req, res) => {
+    try {
+        const { MultiClassStudent, Student } = req.tenantModels;
+        const { classId, section, studentId } = req.query;
+        let query = { school: req.school._id };
+
+        // If searching by class/section, we want to find students in THAT class
+        // and show their multi-class records.
+        let studentQuery = { school: req.school._id };
+        if (studentId) studentQuery._id = studentId;
+        if (classId) studentQuery.class = classId;
+        if (section) studentQuery.section = section;
+
+        const students = await Student.find(studentQuery)
+            .select('firstName lastName admissionNumber rollNumber class section')
+            .populate('class', 'name');
+
+        const studentIds = students.map(s => s._id);
+
+        const assignments = await MultiClassStudent.find({
+            student: { $in: studentIds },
+            school: req.school._id
+        }).populate('class', 'name').populate('academicYear', 'year');
+
+        // Group assignments by student
+        const result = students.map(student => {
+            return {
+                student,
+                assignments: assignments.filter(a => a.student.toString() === student._id.toString())
+            };
+        });
+
+        res.json(result);
+    } catch (error) {
+        console.error('Get MultiClass Assignments Error:', error);
+        res.status(500).json({ message: 'Server Error' });
+    }
+});
+
 // @desc    Get all students for a school (with filters)
 // @route   GET /api/students
 router.get('/', protect, async (req, res) => {
@@ -326,26 +367,6 @@ router.post('/:id/documents', protect, authorize('schooladmin', 'frontdesk'), as
     }
 });
 
-// @desc    Get multi-class assignments
-// @route   GET /api/students/multi-class
-router.get('/multi-class', protect, async (req, res) => {
-    try {
-        const { MultiClassStudent } = req.tenantModels;
-        const { classId, section } = req.query;
-        let query = { school: req.school._id };
-        if (classId) query.class = classId;
-        if (section) query.section = section;
-
-        const assignments = await MultiClassStudent.find(query)
-            .populate('student')
-            .populate('class')
-            .populate('academicYear');
-        res.json(assignments);
-    } catch (error) {
-        console.error('Get MultiClass Assignments Error:', error);
-        res.status(500).json({ message: 'Server Error' });
-    }
-});
 
 // @desc    Add multi-class assignment
 // @route   POST /api/students/multi-class
@@ -377,6 +398,44 @@ router.post('/multi-class', protect, authorize('schooladmin'), async (req, res) 
         res.status(201).json(assignment);
     } catch (error) {
         console.error('Add MultiClass Assignment Error:', error);
+        res.status(500).json({ message: 'Server Error' });
+    }
+});
+
+// @desc    Bulk save multi-class assignments for a student
+// @route   POST /api/students/:id/multi-class/bulk
+router.post('/:id/multi-class/bulk', protect, authorize('schooladmin'), async (req, res) => {
+    try {
+        const { MultiClassStudent, Student } = req.tenantModels;
+        const studentId = req.params.id;
+        const { assignments, primaryClass, primarySection } = req.body;
+
+        // 1. Update Primary Class/Section in Student model if provided
+        if (primaryClass && primarySection) {
+            await Student.findByIdAndUpdate(studentId, {
+                class: primaryClass,
+                section: primarySection
+            });
+        }
+
+        // 2. Remove existing multi-class assignments for this student
+        await MultiClassStudent.deleteMany({ student: studentId, school: req.school._id });
+
+        // 3. Create new assignments
+        if (assignments && assignments.length > 0) {
+            const newAssignments = assignments.map(a => ({
+                student: studentId,
+                class: a.classId,
+                section: a.section,
+                academicYear: a.academicYearId,
+                school: req.school._id
+            }));
+            await MultiClassStudent.insertMany(newAssignments);
+        }
+
+        res.json({ message: 'Assignments updated successfully' });
+    } catch (error) {
+        console.error('Bulk MultiClass Assignment Error:', error);
         res.status(500).json({ message: 'Server Error' });
     }
 });
